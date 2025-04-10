@@ -72,19 +72,9 @@ func pickUpOrPass(dealer int, flip card, hands [][]card) (flipResponse, bool) {
 	return flipResponse{pickItUP: false, goItAlone: goingItAlone{false, 0}}, true
 }
 
-func remainingSuits(excluded suit) []suit {
-	var rs []suit
-	for i := 0; i < numSuits; i++ {
-		if suit(i) != excluded {
-			rs = append(rs, suit(i))
-		}
-	}
-	return rs
-}
-
 func askPlayerToOrderOrPass(player int, excluded suit) (playerSuitChoice, bool) {
 
-	rs := remainingSuits(excluded)
+	rs := excluded.remainingSuits()
 	fmt.Println(rs)
 
 	var response int
@@ -179,37 +169,19 @@ func orderSuit(dealer int, excluded suit) playerSuitChoice {
 	return playerRes
 }
 
-type gameState struct {
-	gameDeck      deck
-	players       []player
-	currentDealer player
-	currentPlayer player
-	trump         suit
-	whoOrdered    player
-	evenTeamScore int
-	oddTeamScore  int
-}
-
 func main() {
 
-	myDeck := NewDeck()
-
-	evenTeamScore := 0
-	oddTeamScore := 0
+	game := NewEuchreGame()
 
 	for dealer, i := 0, 0; i < 2 && evenTeamScore < targetScore && oddTeamScore < targetScore; dealer, i = (dealer+1)%numSuits, i+1 {
 
 		fmt.Println("##############\n\n Player ", dealer, "is dealing.\n\n##############")
-		myDeck.shuffle()
-		// fmt.Println(myDeck)
 
-		hands := myDeck.deal()
 		// for hand := range hands {
 		// 	fmt.Println(hands[hand])
 		// }
 
-		flip := hands[4][0]
-		fmt.Println(flip, " Flipped")
+		fmt.Println(game.flip, " Flipped")
 
 		pickUpOrPassResult, burried := pickUpOrPass(dealer, flip, hands)
 
