@@ -16,6 +16,7 @@ type flipResponse struct {
 	pickItUP  bool
 	goItAlone goingItAlone
 }
+
 type playerSuitChoice struct {
 	choice    suit
 	goItAlone goingItAlone
@@ -82,7 +83,6 @@ func remainingSuits(excluded suit) []suit {
 }
 
 func askPlayerToOrderOrPass(player int, excluded suit) (playerSuitChoice, bool) {
-	// TODO: implement
 
 	rs := remainingSuits(excluded)
 	fmt.Println(rs)
@@ -158,8 +158,8 @@ func orderSuit(dealer int, excluded suit) playerSuitChoice {
 		if !pass {
 			ordered = true
 			trump = playerRes.choice
+			break
 		}
-
 	}
 
 	if !ordered {
@@ -179,16 +179,25 @@ func orderSuit(dealer int, excluded suit) playerSuitChoice {
 	return playerRes
 }
 
-func main() {
+type gameState struct {
+	gameDeck      deck
+	players       []player
+	currentDealer player
+	currentPlayer player
+	trump         suit
+	whoOrdered    player
+	evenTeamScore int
+	oddTeamScore  int
+}
 
-	// TODO: need to figure out a way to track who said they would go alone if that is chosen
+func main() {
 
 	myDeck := NewDeck()
 
 	evenTeamScore := 0
 	oddTeamScore := 0
 
-	for dealer, i := 0, 0; i < 2 && evenTeamScore < 10 && oddTeamScore < 10; dealer, i = (dealer+1)%numSuits, i+1 {
+	for dealer, i := 0, 0; i < 2 && evenTeamScore < targetScore && oddTeamScore < targetScore; dealer, i = (dealer+1)%numSuits, i+1 {
 
 		fmt.Println("##############\n\n Player ", dealer, "is dealing.\n\n##############")
 		myDeck.shuffle()
@@ -224,8 +233,10 @@ func main() {
 		}
 
 		// play 5 tricks, starting with the dealer+1 player
+		fmt.Println("Play 5 tricks!")
 
 		// Update score
+		fmt.Println("Update Score!")
 
 	}
 }
