@@ -16,27 +16,27 @@ type euchreGameState struct {
 	goingItAlone  bool
 }
 
-func (gs euchreGameState) nextDealer() {
+func (gs *euchreGameState) nextDealer() {
 	gs.currentDealer = (gs.currentDealer + 1) % numPlayers
 }
 
-func (gs euchreGameState) nextPlayer() {
+func (gs *euchreGameState) nextPlayer() {
 	gs.currentPlayer = (gs.currentPlayer + 1) % numPlayers
 }
 
-func (gs euchreGameState) dealerDiscard() {
+func (gs *euchreGameState) dealerDiscard() {
 	// TODO: implement
 }
 
-func (gs euchreGameState) evenTeamScored() {
+func (gs *euchreGameState) evenTeamScored() {
 	gs.evenTeamScore++
 }
 
-func (gs euchreGameState) oddTeamScored() {
+func (gs *euchreGameState) oddTeamScored() {
 	gs.oddTeamScore++
 }
 
-func (gs euchreGameState) playerOrderedSuit(playerID int, s suit) {
+func (gs *euchreGameState) playerOrderedSuit(playerID int, s suit) {
 	gs.whoOrdered = playerID
 	gs.trump = s
 }
@@ -45,7 +45,7 @@ func (gs euchreGameState) gameOver() bool {
 	return gs.evenTeamScore < 10 && gs.oddTeamScore < 10
 }
 
-func (gs euchreGameState) deal() {
+func (gs *euchreGameState) deal() {
 
 	var hand1 []card
 	var hand2 []card
@@ -83,14 +83,14 @@ func (gs euchreGameState) deal() {
 
 	burn = append(burn, gs.gameDeck[end:]...)
 
-	hands := []deck{hand1, hand2, hand3, hand4, burn}
+	hands := []deck{hand1, hand2, hand3, hand4}
 
 	for hand := range hands {
 		fmt.Println(hands[hand])
 	}
 
-	for i := 1; i <= numPlayers; i++ {
-		p := (gs.currentDealer + 1) % numPlayers
+	for i := 0; i < numPlayers; i++ {
+		p := (gs.currentDealer + i + 1) % numPlayers
 		gs.players[p].hand = hands[i]
 	}
 
@@ -98,7 +98,7 @@ func (gs euchreGameState) deal() {
 	gs.flip = burn[0]
 }
 
-func (gs euchreGameState) offerTheFlipedCard() (pickedUp bool) {
+func (gs *euchreGameState) offerTheFlipedCard() (pickedUp bool) {
 
 	for i := 1; i <= numPlayers; i++ {
 		player := (gs.currentDealer + i) % numPlayers
@@ -146,7 +146,7 @@ func (gs euchreGameState) offerTheFlipedCard() (pickedUp bool) {
 	return
 }
 
-func (gs euchreGameState) askPlayerToOrderOrPass() (pass bool) {
+func (gs *euchreGameState) askPlayerToOrderOrPass() (pass bool) {
 	/*
 		passes and returns true or
 		sets trump and goingitalone and returns false
@@ -158,7 +158,7 @@ func (gs euchreGameState) askPlayerToOrderOrPass() (pass bool) {
 	for {
 		fmt.Println("Player ", gs.currentPlayer)
 		fmt.Println(gs.flip.suit, "s are out.")
-		fmt.Println("Press: 1 to Pass. 2 for", rs[0], "s 3 for", rs[1], "s 4 for3", rs[2], "s")
+		fmt.Println("Press: 1 to Pass. 2 for", rs[0], "s 3 for", rs[1], "s 4 for", rs[2], "s")
 
 		_, err := fmt.Scanf("%d", &response)
 
@@ -205,25 +205,9 @@ func (gs euchreGameState) askPlayerToOrderOrPass() (pass bool) {
 	}
 }
 
-func (gs euchreGameState) establishTrump() {
+func (gs *euchreGameState) establishTrump() {
 
 	var pass bool
-	// ordered := false
-
-	// for i := 1; i < numPlayers; i++ {
-
-	// 	player := (gs.currentDealer + i) % numPlayers
-
-	// 	pass = gs.askPlayerToOrderOrPass(player)
-
-	// 	if !pass {
-	// 		return
-	// 	}
-
-	// }
-
-	// make dealer order
-	// player := (gs.currentDealer + 1) % numPlayers
 	for {
 
 		if gs.currentPlayer == gs.currentDealer {
@@ -247,30 +231,6 @@ func (gs euchreGameState) establishTrump() {
 
 		}
 	}
-	// var pass bool
-	// // ordered := false
-
-	// for i := 1; i < numPlayers; i++ {
-
-	// 	player := (gs.currentDealer + i) % numPlayers
-
-	// 	pass = gs.askPlayerToOrderOrPass(player)
-
-	// 	if !pass {
-	// 		return
-	// 	}
-
-	// }
-
-	// // make dealer order
-	// for {
-	// 	pass = gs.askPlayerToOrderOrPass(gs.currentDealer)
-	// 	if pass {
-	// 		fmt.Println("Dealer must choose a suit at this time.")
-	// 	} else {
-	// 		return
-	// 	}
-	// }
 }
 
 func NewEuchreGameState() euchreGameState {
