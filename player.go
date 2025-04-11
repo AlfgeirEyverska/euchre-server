@@ -7,6 +7,12 @@ type player struct {
 	hand deck
 }
 
+const numPlayers = 4
+
 func (p player) String() string {
-	return fmt.Sprint("Player ", p.id, "\nCards:\n", p.hand)
+	return fmt.Sprint("Player ", p.id, " | Cards: ", p.hand)
+}
+
+func (p *player) SetHand(given deck) {
+	p.hand = given
 }

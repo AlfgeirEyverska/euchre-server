@@ -1,6 +1,8 @@
 package main
 
-import "math/rand"
+import (
+	"math/rand"
+)
 
 const deckSize = 24
 
@@ -27,4 +29,19 @@ func (d deck) shuffle() {
 		d[a] = d[b]
 		d[b] = temp
 	}
+}
+
+func (d *deck) remove(c card) {
+	cards := (*d)[:]
+	for i := range cards {
+		if cards[i] == c {
+			(*d) = append(cards[:i], cards[i+1:]...)
+			break
+		}
+	}
+}
+
+func (d *deck) replace(removed card, added card) {
+	d.remove(removed)
+	(*d) = append((*d), added)
 }
