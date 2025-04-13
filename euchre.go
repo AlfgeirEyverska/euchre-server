@@ -40,6 +40,9 @@ func main() {
 			gameState.establishTrump()
 		}
 
+		// set first player to dealer + 1
+		gameState.resetFirstPlayer()
+
 		fmt.Println("Trump is ", gameState.trump, "s")
 		if gameState.goingItAlone {
 			fmt.Println("Player ", gameState.whoOrdered, " is going it alone")

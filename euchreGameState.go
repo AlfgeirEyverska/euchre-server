@@ -52,6 +52,14 @@ func (gs *euchreGameState) nextPlayer() {
 	gs.currentPlayer = gs.players[nextPlayerID(*gs.currentPlayer)]
 }
 
+func (gs *euchreGameState) resetFirstPlayer() {
+	gs.currentPlayer = gs.players[nextPlayerID(*gs.currentDealer)]
+}
+
+func (gs *euchreGameState) setFirstPlayer(p player) {
+	gs.currentPlayer = gs.players[p.id]
+}
+
 func (gs *euchreGameState) dealerDiscard() {
 	// TODO: implement
 	var response int
@@ -430,17 +438,53 @@ func (gs euchreGameState) cardRank(c card, suitLead suit) int {
 	return 0
 }
 
+func (gs euchreGameState) leftBower() card {
+	var leftBower card
+	switch gs.trump {
+	case hearts:
+		leftBower = card{jack, diamonds}
+	case diamonds:
+		leftBower = card{jack, hearts}
+	case clubs:
+		leftBower = card{jack, spades}
+	case spades:
+		leftBower = card{jack, clubs}
+	}
+	return leftBower
+}
+
 func (gs euchreGameState) validPlay(p play, suitLead suit) bool {
 	// follow suit if you have to
+	// ignore left bower
+	lb := gs.leftBower()
 
-	if p.cardPlayed.suit == suitLead {
-		return true
-	} else {
-		if p.cardPlayer.hand.hasA(suitLead) {
-			log.Println("Player must follow suit")
-			return false
-		} else {
+	if suitLead == lb.suit {
+		var handCopy []card
+		for _, v := range p.cardPlayer.hand {
+			handCopy = append(handCopy, v)
+		}
+		handCopyDeck := deck(handCopy)
+		handCopyDeck.remove(lb)
+		if p.cardPlayed.suit == suitLead && p.cardPlayed.denomination != jack {
 			return true
+		} else {
+			if handCopyDeck.hasA(suitLead) {
+				log.Println("Player must follow suit")
+				return false
+			} else {
+				return true
+			}
+		}
+	} else {
+		if p.cardPlayed.suit == suitLead {
+			return true
+		} else {
+			if p.cardPlayer.hand.hasA(suitLead) {
+				log.Println("Player must follow suit")
+				return false
+			} else {
+				return true
+			}
 		}
 	}
 }
@@ -490,9 +534,10 @@ func (gs *euchreGameState) play5Tricks() {
 		currentPlay := gs.askPlayerToPlayCard()
 		plays = append(plays, currentPlay)
 		suitLead = currentPlay.cardPlayed.suit
+		gs.currentPlayer.hand.remove(currentPlay.cardPlayed)
 		gs.nextPlayer()
 
-		for playerN := 1; playerN <= numPlayers; playerN++ {
+		for playerN := 1; playerN < numPlayers; playerN++ {
 			for {
 				fmt.Println(suitLead, "s were lead")
 				fmt.Println(plays, "\nPlayed so far")
@@ -520,6 +565,7 @@ func (gs *euchreGameState) play5Tricks() {
 			oddScore++
 		}
 		log.Println("Even Score ", evenScore, " | Odd score", oddScore)
+		gs.setFirstPlayer(*winningPlay.cardPlayer)
 	}
 	points := gs.numPoints(evenScore, oddScore)
 	log.Println(points)
