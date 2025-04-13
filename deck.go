@@ -45,3 +45,12 @@ func (d *deck) replace(removed card, added card) {
 	d.remove(removed)
 	(*d) = append((*d), added)
 }
+
+func (d deck) hasA(s suit) bool {
+	for _, v := range d {
+		if v.suit == s {
+			return true
+		}
+	}
+	return false
+}

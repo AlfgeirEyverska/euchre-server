@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"log"
 	"slices"
 )
 
@@ -90,12 +91,64 @@ func (gs *euchreGameState) dealerDiscard() {
 	}
 }
 
-func (gs *euchreGameState) evenTeamScored() {
-	gs.evenTeamScore++
+func (gs euchreGameState) numPoints(evenScore int, oddScore int) int {
+
+	if gs.goingItAlone {
+		if gs.whoOrdered.id%2 == 0 {
+			// even team
+			if evenScore == 5 {
+				return 4
+			}
+			if evenScore >= 3 {
+				return 1
+			}
+			if evenScore < 3 {
+				return 2
+			}
+		} else {
+			if oddScore == 5 {
+				return 4
+			}
+			if oddScore >= 3 {
+				return 1
+			}
+			if oddScore < 3 {
+				return 2
+			}
+		}
+	} else {
+		if gs.whoOrdered.id%2 == 0 {
+			// even team
+			if evenScore == 5 {
+				return 2
+			}
+			if evenScore >= 3 {
+				return 1
+			}
+			if evenScore < 3 {
+				return 2
+			}
+		} else {
+			if oddScore == 5 {
+				return 2
+			}
+			if oddScore >= 3 {
+				return 1
+			}
+			if oddScore < 3 {
+				return 2
+			}
+		}
+	}
+	return 0
 }
 
-func (gs *euchreGameState) oddTeamScored() {
-	gs.oddTeamScore++
+func (gs *euchreGameState) evenTeamScored(n int) {
+	gs.evenTeamScore += n
+}
+
+func (gs *euchreGameState) oddTeamScored(n int) {
+	gs.oddTeamScore += n
 }
 
 func (gs *euchreGameState) playerOrderedSuit(p player, s suit) {
@@ -104,7 +157,7 @@ func (gs *euchreGameState) playerOrderedSuit(p player, s suit) {
 }
 
 func (gs euchreGameState) gameOver() bool {
-	return gs.evenTeamScore < targetScore && gs.oddTeamScore < targetScore
+	return gs.evenTeamScore >= targetScore || gs.oddTeamScore >= targetScore
 }
 
 func (gs *euchreGameState) deal() {
@@ -148,7 +201,7 @@ func (gs *euchreGameState) deal() {
 	hands := []deck{hand1, hand2, hand3, hand4}
 
 	for hand := range hands {
-		fmt.Println(hands[hand])
+		log.Println(hands[hand])
 	}
 
 	for i := 0; i < numPlayers; i++ {
@@ -158,9 +211,7 @@ func (gs *euchreGameState) deal() {
 
 	gs.discard = burn
 	gs.flip = burn[0]
-	fmt.Println("##############################")
-	fmt.Println(gs.players)
-	fmt.Println("##############################")
+	log.Println(gs.players)
 }
 
 func (gs *euchreGameState) offerTheFlippedCard() (pickedUp bool) {
@@ -169,12 +220,17 @@ func (gs *euchreGameState) offerTheFlippedCard() (pickedUp bool) {
 
 		fmt.Println("\nSquiggle squiggle squiggle\n ")
 
+		validResponses := map[int]string{1: "Pick It Up", 2: "Pass", 3: "Pick It Up and Go It Alone"}
 		var response int
 		for {
-			fmt.Println("Player ", gs.currentPlayer)
+			fmt.Println("Player ", gs.currentPlayer.id)
 			fmt.Println("Your cards are:\n", gs.currentPlayer.hand)
 			fmt.Println(gs.flip, " was flipped.")
-			fmt.Println("Press | 1 to Pick It Up. | 2 to Pass. | 3 to Pick It Up and Go It Alone")
+			prompt := "Press | "
+			for i := 1; i < len(validResponses)+1; i++ {
+				prompt += fmt.Sprint(i, " to ", validResponses[i], " | ")
+			}
+			fmt.Println(prompt)
 
 			_, err := fmt.Scanf("%d", &response)
 
@@ -184,6 +240,7 @@ func (gs *euchreGameState) offerTheFlippedCard() (pickedUp bool) {
 			}
 
 			fmt.Println("You answered ", response)
+
 			if response != 1 && response != 2 && response != 3 {
 				fmt.Println("##############\nInvalid input.\n##############")
 			} else {
@@ -218,6 +275,14 @@ func (gs *euchreGameState) askPlayerToOrderOrPass() (pass bool) {
 		sets trump and goingitalone and returns false
 	*/
 	rs := gs.flip.suit.remainingSuits()
+	validResponses := make(map[int]string)
+	responseSuits := make(map[int]suit)
+	validResponses[1] = "Pass"
+	for i := 0; i < len(rs); i++ {
+		j := i + 2
+		validResponses[j] = fmt.Sprint(rs[i])
+		responseSuits[j] = rs[i]
+	}
 	fmt.Println(rs)
 
 	var response int
@@ -225,7 +290,11 @@ func (gs *euchreGameState) askPlayerToOrderOrPass() (pass bool) {
 		fmt.Println("Player ", gs.currentPlayer)
 		fmt.Println(gs.flip.suit, "s are out.")
 		fmt.Println("Your cards are:\n", gs.currentPlayer.hand)
-		fmt.Println("Press: 1 to Pass. 2 for", rs[0], "s 3 for", rs[1], "s 4 for", rs[2], "s")
+		prompt := "Press: | "
+		for i := 1; i <= len(validResponses); i++ {
+			prompt += fmt.Sprint(i, " for ", validResponses[i], "s | ")
+		}
+		fmt.Println(prompt)
 
 		_, err := fmt.Scanf("%d", &response)
 
@@ -234,11 +303,12 @@ func (gs *euchreGameState) askPlayerToOrderOrPass() (pass bool) {
 			continue
 		}
 
-		if response != 1 && response != 2 && response != 3 && response != 4 {
+		_, ok := validResponses[response]
+		if !ok {
 			fmt.Println("##############\nInvalid input.\n##############")
 		} else {
 			if response != 1 {
-				gs.playerOrderedSuit(*gs.currentPlayer, rs[response-2])
+				gs.playerOrderedSuit(*gs.currentPlayer, responseSuits[response])
 			}
 			break
 		}
@@ -305,27 +375,100 @@ type play struct {
 	cardPlayed card
 }
 
+func (p play) String() string {
+	return fmt.Sprint("Player ", p.cardPlayer.id, " played ", p.cardPlayed)
+}
+
+func (gs euchreGameState) cardRank(c card, suitLead suit) int {
+
+	var rightBower card
+	var leftBower card
+	switch gs.trump {
+	case hearts:
+		rightBower = card{jack, hearts}
+		leftBower = card{jack, diamonds}
+	case diamonds:
+		rightBower = card{jack, diamonds}
+		leftBower = card{jack, hearts}
+	case clubs:
+		rightBower = card{jack, clubs}
+		leftBower = card{jack, spades}
+	case spades:
+		rightBower = card{jack, spades}
+		leftBower = card{jack, clubs}
+	}
+
+	var partialDeck deck
+
+	if suitLead != gs.trump {
+		for denomk := denomination(0); denomk < numDenominations; denomk++ {
+			partialDeck = append(partialDeck, card{denomination: denomk, suit: suitLead})
+		}
+		if suitLead == leftBower.suit {
+			partialDeck.remove(leftBower)
+		}
+		log.Println(partialDeck)
+	}
+
+	for denomk := denomination(0); denomk < numDenominations; denomk++ {
+		partialDeck = append(partialDeck, card{denomination: denomk, suit: gs.trump})
+	}
+	partialDeck.remove(rightBower)
+
+	log.Println(partialDeck)
+	partialDeck = append(partialDeck, leftBower)
+	partialDeck = append(partialDeck, rightBower)
+	log.Println(partialDeck)
+
+	for i, v := range partialDeck {
+		fmt.Println(i+1, " ", v)
+		if c == v {
+			return i + 1
+		}
+	}
+
+	return 0
+}
+
+func (gs euchreGameState) validPlay(p play, suitLead suit) bool {
+	// follow suit if you have to
+
+	if p.cardPlayed.suit == suitLead {
+		return true
+	} else {
+		if p.cardPlayer.hand.hasA(suitLead) {
+			log.Println("Player must follow suit")
+			return false
+		} else {
+			return true
+		}
+	}
+}
+
 func (gs *euchreGameState) askPlayerToPlayCard() play {
 
 	var response int
 	for {
 		fmt.Println("Player ", gs.currentPlayer)
 		fmt.Println(gs.trump, "s are trump")
-		fmt.Println("Your cards are:\n", gs.currentPlayer.hand)
+		fmt.Println("Your cards are:\n", gs.currentPlayer.hand, "\nWhat would you like to play?")
 
 		validOptions := make(map[int]card)
 		options := "Press | "
-		for i := range gs.currentPlayer.hand {
-			options += fmt.Sprint(i, " For ", gs.currentPlayer.hand[i], " | ")
-			validOptions[i] = gs.currentDealer.hand[i]
+		for i, v := range gs.currentPlayer.hand {
+			prettyIdx := i + 1
+			options += fmt.Sprint(prettyIdx, " For ", v, " | ")
+			validOptions[prettyIdx] = v
 		}
 		fmt.Println(options)
+		log.Println(validOptions)
 		_, err := fmt.Scanf("%d", &response)
 
 		if err != nil {
 			fmt.Println("##############\nInvalid input. Input Error.\n##############")
 			continue
 		}
+
 		value, ok := validOptions[response]
 		if !ok {
 			fmt.Println("##############\nInvalid input.\n##############")
@@ -336,23 +479,56 @@ func (gs *euchreGameState) askPlayerToPlayCard() play {
 
 }
 
-func (gs euchreGameState) validPlay(p play) bool {
-	// follow suit if you have to
-
-}
-
 func (gs *euchreGameState) play5Tricks() {
-	// evenScore := 0
-	// oddScore := 0
-	for trick := 0; trick < 5; trick++ {
-		for i := 0; i < 4; i++ {
-			// gs.askPlayerToPlayCard()
-			// if gs.validPlay() {}
-			// ask player to play a card
+	evenScore := 0
+	oddScore := 0
+	for trickN := 0; trickN < 5; trickN++ {
+		log.Println("Trick ", trickN)
+		var suitLead suit
+		var plays []play
 
-			// check to see if that card is valid
+		currentPlay := gs.askPlayerToPlayCard()
+		plays = append(plays, currentPlay)
+		suitLead = currentPlay.cardPlayed.suit
+		gs.nextPlayer()
+
+		for playerN := 1; playerN <= numPlayers; playerN++ {
+			for {
+				fmt.Println(suitLead, "s were lead")
+				fmt.Println(plays, "\nPlayed so far")
+				currentPlay := gs.askPlayerToPlayCard()
+				if gs.validPlay(currentPlay, suitLead) {
+					plays = append(plays, currentPlay)
+					gs.currentPlayer.hand.remove(currentPlay.cardPlayed)
+					log.Println(gs.currentPlayer.hand, " After Removal!!!!!!!!!!!")
+					gs.nextPlayer()
+					break
+				}
+				log.Println("Player ", gs.currentPlayer.id, " played invalid card.")
+			}
 		}
+		// check winning card
+		winningPlay := plays[0]
+		for i := 1; i < len(plays); i++ {
+			if gs.cardRank(plays[i].cardPlayed, suitLead) > gs.cardRank(winningPlay.cardPlayed, suitLead) {
+				winningPlay = plays[i]
+			}
+		}
+		if winningPlay.cardPlayer.id%2 == 0 {
+			evenScore++
+		} else {
+			oddScore++
+		}
+		log.Println("Even Score ", evenScore, " | Odd score", oddScore)
 	}
+	points := gs.numPoints(evenScore, oddScore)
+	log.Println(points)
+	if evenScore >= 3 {
+		gs.evenTeamScored(points)
+	} else {
+		gs.oddTeamScored(points)
+	}
+	fmt.Println("Even: ", gs.evenTeamScore, "\n", "Odd: ", gs.oddTeamScore)
 }
 
 func NewEuchreGameState() euchreGameState {
