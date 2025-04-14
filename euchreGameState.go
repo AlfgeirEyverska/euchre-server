@@ -14,10 +14,10 @@ type euchreGameState struct {
 	discard       deck
 	flip          card
 	trump         suit
-	whoOrdered    *player
-	goingItAlone  bool
 	currentDealer *player
 	currentPlayer *player
+	whoOrdered    *player
+	goingItAlone  bool
 	evenTeamScore int
 	oddTeamScore  int
 }
@@ -65,8 +65,8 @@ func (gs *euchreGameState) dealerDiscard() {
 	var response int
 	hand := gs.currentDealer.hand
 	for {
-		fmt.Println("Player ", gs.currentDealer)
-
+		fmt.Println("\n\n\nPlayer ", gs.currentDealer.id)
+		fmt.Println("You are picking up ", gs.flip)
 		fmt.Println("Your cards are:\n", hand)
 		fmt.Print("Discard | ")
 		for i := range hand {
@@ -309,7 +309,7 @@ func (gs *euchreGameState) askPlayerToOrderOrPass() (pass bool) {
 
 	var response int
 	for {
-		fmt.Println("Player ", gs.currentPlayer)
+		fmt.Println("\n\n\nPlayer ", gs.currentPlayer.id)
 		fmt.Println(gs.flip.suit, "s are out.")
 		fmt.Println("Your cards are:\n", gs.currentPlayer.hand)
 		prompt := fmt.Sprint("Press: | ", 1, " to ", validResponses[1], " | ")
@@ -493,7 +493,7 @@ func (gs *euchreGameState) askPlayerToPlayCard() play {
 
 	var response int
 	for {
-		fmt.Println("Player ", gs.currentPlayer.id)
+		fmt.Println("\n\n\nPlayer ", gs.currentPlayer.id)
 		fmt.Println(gs.trump, "s are trump")
 		fmt.Println("Your cards are:\n", gs.currentPlayer.hand, "\nWhat would you like to play?")
 
@@ -505,7 +505,7 @@ func (gs *euchreGameState) askPlayerToPlayCard() play {
 			validOptions[prettyIdx] = v
 		}
 		fmt.Println(options)
-		log.Println(validOptions)
+		// log.Println(validOptions)
 		_, err := fmt.Scanf("%d", &response)
 
 		if err != nil {
