@@ -260,12 +260,11 @@ func (gs *euchreGameState) offerTheFlippedCard() (pickedUp bool) {
 				continue
 			}
 
-			fmt.Println("You answered ", response)
-
 			_, ok := validResponses[response]
 			if !ok {
 				fmt.Println("##############\nInvalid input.\n##############")
 			} else {
+				fmt.Println("Player ", gs.currentPlayer.id, " chose ", validResponses[response])
 				break
 			}
 		}
