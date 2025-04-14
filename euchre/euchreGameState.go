@@ -1,4 +1,4 @@
-package main
+package euchre
 
 import (
 	"fmt"
@@ -223,7 +223,7 @@ func (gs *euchreGameState) deal() {
 	}
 
 	for i := 0; i < numPlayers; i++ {
-		gs.currentPlayer.SetHand(hands[i])
+		gs.currentPlayer.setHand(hands[i])
 		gs.nextPlayer()
 	}
 
@@ -587,7 +587,7 @@ func (gs *euchreGameState) play5Tricks() {
 }
 
 func NewEuchreGameState() euchreGameState {
-	myDeck := NewDeck()
+	myDeck := newDeck()
 
 	myPlayers := make([]*player, numPlayers)
 	for i := 0; i < numPlayers; i++ {

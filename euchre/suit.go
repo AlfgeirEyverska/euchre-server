@@ -1,4 +1,4 @@
-package main
+package euchre
 
 import "fmt"
 

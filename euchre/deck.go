@@ -1,4 +1,4 @@
-package main
+package euchre
 
 import (
 	"math/rand"
@@ -8,7 +8,7 @@ const deckSize = 24
 
 type deck []card
 
-func NewDeck() deck {
+func newDeck() deck {
 	d := make([]card, deckSize)
 	counter := 0
 	for denomk := denomination(0); denomk < numDenominations; denomk++ {

@@ -1,4 +1,4 @@
-package main
+package euchre
 
 import (
 	"fmt"
@@ -6,17 +6,7 @@ import (
 	"os"
 )
 
-// func main() {
-// 	gs := NewEuchreGameState()
-
-// 	fmt.Println(gs)
-// 	gs.nextDealer()
-// 	gs.deal()
-// 	fmt.Println(gs)
-
-// }
-
-func main() {
+func PlayEuchre() {
 
 	logFile, err := os.OpenFile("euchre.log", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
 	if err != nil {
@@ -34,7 +24,6 @@ func main() {
 	log.Println("game over: ", gameState.gameOver())
 
 	for !gameState.gameOver() {
-		// for dealer, i := 0, 0; i < 2 && evenTeamScore < targetScore && oddTeamScore < targetScore; dealer, i = (dealer+1)%numSuits, i+1 {
 
 		fmt.Println("##############\n\n Player ", gameState.currentDealer.id, "is dealing.\n\n##############")
 

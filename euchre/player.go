@@ -1,4 +1,4 @@
-package main
+package euchre
 
 import "fmt"
 
@@ -13,6 +13,6 @@ func (p player) String() string {
 	return fmt.Sprint("Player ", p.id, " | Cards: ", p.hand)
 }
 
-func (p *player) SetHand(given deck) {
+func (p *player) setHand(given deck) {
 	p.hand = given
 }
