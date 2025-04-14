@@ -241,7 +241,7 @@ func (gs *euchreGameState) offerTheFlippedCard() (pickedUp bool) {
 
 		fmt.Println("\nSquiggle squiggle squiggle\n ")
 
-		validResponses := map[int]string{1: "Pick It Up", 2: "Pass", 3: "Pick It Up and Go It Alone"}
+		validResponses := map[int]string{1: "Pass", 2: "Pick It Up", 3: "Pick It Up and Go It Alone"}
 		var response int
 		for {
 			fmt.Println("Player ", gs.currentPlayer.id)
@@ -262,7 +262,8 @@ func (gs *euchreGameState) offerTheFlippedCard() (pickedUp bool) {
 
 			fmt.Println("You answered ", response)
 
-			if response != 1 && response != 2 && response != 3 {
+			_, ok := validResponses[response]
+			if !ok {
 				fmt.Println("##############\nInvalid input.\n##############")
 			} else {
 				break
@@ -271,19 +272,19 @@ func (gs *euchreGameState) offerTheFlippedCard() (pickedUp bool) {
 
 		switch response {
 		case 1:
-			gs.playerOrderedSuit(*gs.currentPlayer, gs.flip.suit)
-			pickedUp = true
-			return
-		case 2:
 			gs.nextPlayer()
 			continue
-		case 3:
+		case 2:
 			gs.playerOrderedSuit(*gs.currentPlayer, gs.flip.suit)
-			gs.goingItAlone = true
 			pickedUp = true
 			return
+		case 3:
+			gs.playerOrderedSuit(*gs.currentPlayer, gs.flip.suit)
+			pickedUp = true
+			gs.goingItAlone = true
+			return
 		default:
-			fmt.Println("This should never happen!!")
+			log.Fatal("Player sent invalid response and it was accepted. This should never happen!!")
 		}
 	}
 	pickedUp = false
@@ -311,8 +312,8 @@ func (gs *euchreGameState) askPlayerToOrderOrPass() (pass bool) {
 		fmt.Println("Player ", gs.currentPlayer)
 		fmt.Println(gs.flip.suit, "s are out.")
 		fmt.Println("Your cards are:\n", gs.currentPlayer.hand)
-		prompt := "Press: | "
-		for i := 1; i <= len(validResponses); i++ {
+		prompt := fmt.Sprint("Press: | ", 1, " to ", validResponses[1], " | ")
+		for i := 2; i <= len(validResponses); i++ {
 			prompt += fmt.Sprint(i, " for ", validResponses[i], "s | ")
 		}
 		fmt.Println(prompt)
@@ -376,11 +377,9 @@ func (gs *euchreGameState) establishTrump() {
 			}
 		} else {
 			pass = gs.askPlayerToOrderOrPass()
+			gs.nextPlayer()
 			if !pass {
-				gs.nextPlayer()
 				return
-			} else {
-				gs.nextPlayer()
 			}
 		}
 	}
@@ -414,7 +413,6 @@ func (gs euchreGameState) cardRank(c card, suitLead suit) int {
 		if suitLead == leftBower.suit {
 			partialDeck.remove(leftBower)
 		}
-		log.Println(partialDeck)
 	}
 
 	for denomk := denomination(0); denomk < numDenominations; denomk++ {
@@ -422,7 +420,6 @@ func (gs euchreGameState) cardRank(c card, suitLead suit) int {
 	}
 	partialDeck.remove(rightBower)
 
-	log.Println(partialDeck)
 	partialDeck = append(partialDeck, leftBower)
 	partialDeck = append(partialDeck, rightBower)
 	log.Println(partialDeck)
