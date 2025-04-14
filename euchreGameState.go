@@ -151,6 +151,16 @@ func (gs euchreGameState) numPoints(evenScore int, oddScore int) int {
 	return 0
 }
 
+func (gs *euchreGameState) awardPoints(evenScore int, oddScore int) {
+	points := gs.numPoints(evenScore, oddScore)
+	log.Println(points, " points awarded")
+	if evenScore >= 3 {
+		gs.evenTeamScored(points)
+	} else {
+		gs.oddTeamScored(points)
+	}
+}
+
 func (gs *euchreGameState) evenTeamScored(n int) {
 	gs.evenTeamScore += n
 }
@@ -515,43 +525,53 @@ func (gs *euchreGameState) askPlayerToPlayCard() play {
 	}
 }
 
+func (gs *euchreGameState) playTrick() play {
+	var cardLead card
+	var plays []play
+
+	// Lead
+	currentPlay := gs.askPlayerToPlayCard()
+	plays = append(plays, currentPlay)
+	gs.currentPlayer.hand.remove(currentPlay.cardPlayed)
+	cardLead = currentPlay.cardPlayed
+	gs.nextPlayer()
+
+	for playerN := 1; playerN < numPlayers; playerN++ {
+		// Get valid card from player
+		for {
+			fmt.Println(cardLead.suit, "s were lead")
+			fmt.Println(plays, "\nPlayed so far")
+			currentPlay := gs.askPlayerToPlayCard()
+			if gs.validPlay(currentPlay, cardLead) {
+				plays = append(plays, currentPlay)
+				gs.currentPlayer.hand.remove(currentPlay.cardPlayed)
+				log.Println(gs.currentPlayer.hand, " After Removal")
+				gs.nextPlayer()
+				break
+			}
+			log.Println("Player ", gs.currentPlayer.id, " played invalid card.")
+		}
+	}
+	// check winning card
+	winningPlay := plays[0]
+	for i := 1; i < len(plays); i++ {
+		if gs.cardRank(plays[i].cardPlayed, cardLead.suit) >
+			gs.cardRank(winningPlay.cardPlayed, cardLead.suit) {
+			winningPlay = plays[i]
+		}
+	}
+	return winningPlay
+}
+
 func (gs *euchreGameState) play5Tricks() {
 	evenScore := 0
 	oddScore := 0
+
 	for trickN := 0; trickN < 5; trickN++ {
+
 		log.Println("Trick ", trickN)
-		var cardLead card
-		var plays []play
 
-		// Lead
-		currentPlay := gs.askPlayerToPlayCard()
-		plays = append(plays, currentPlay)
-		cardLead = currentPlay.cardPlayed
-		gs.currentPlayer.hand.remove(currentPlay.cardPlayed)
-		gs.nextPlayer()
-
-		for playerN := 1; playerN < numPlayers; playerN++ {
-			for {
-				fmt.Println(cardLead.suit, "s were lead")
-				fmt.Println(plays, "\nPlayed so far")
-				currentPlay := gs.askPlayerToPlayCard()
-				if gs.validPlay(currentPlay, cardLead) {
-					plays = append(plays, currentPlay)
-					gs.currentPlayer.hand.remove(currentPlay.cardPlayed)
-					log.Println(gs.currentPlayer.hand, " After Removal!!!!!!!!!!!")
-					gs.nextPlayer()
-					break
-				}
-				log.Println("Player ", gs.currentPlayer.id, " played invalid card.")
-			}
-		}
-		// check winning card
-		winningPlay := plays[0]
-		for i := 1; i < len(plays); i++ {
-			if gs.cardRank(plays[i].cardPlayed, cardLead.suit) > gs.cardRank(winningPlay.cardPlayed, cardLead.suit) {
-				winningPlay = plays[i]
-			}
-		}
+		winningPlay := gs.playTrick()
 
 		if winningPlay.cardPlayer.id%2 == 0 {
 			evenScore++
@@ -560,16 +580,13 @@ func (gs *euchreGameState) play5Tricks() {
 		}
 
 		log.Println("Even Score ", evenScore, " | Odd score", oddScore)
+
 		// Give the winner control of the next trick
 		gs.setFirstPlayer(*winningPlay.cardPlayer)
 	}
-	points := gs.numPoints(evenScore, oddScore)
-	log.Println(points, " points awarded")
-	if evenScore >= 3 {
-		gs.evenTeamScored(points)
-	} else {
-		gs.oddTeamScored(points)
-	}
+
+	gs.awardPoints(evenScore, oddScore)
+
 	fmt.Println("Even team score: ", gs.evenTeamScore, "\n", "Odd team score: ", gs.oddTeamScore)
 }
 
@@ -590,8 +607,6 @@ func NewEuchreGameState() euchreGameState {
 		evenTeamScore: 0,
 		oddTeamScore:  0,
 	}
-
-	myGameState.deal()
 
 	return myGameState
 }
