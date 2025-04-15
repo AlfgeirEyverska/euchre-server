@@ -13,12 +13,10 @@ func PlayEuchre() {
 		log.Fatal(err) // Handle error and exit if file can't be opened.
 	}
 	defer logFile.Close()
-
 	log.SetOutput(logFile)
-
 	log.SetFlags(log.LstdFlags | log.Lshortfile)
 
-	gameState := NewEuchreGameState()
+	gameState := NewEuchreGameState(debugCLI{})
 
 	log.Println("established game state")
 	log.Println("game over: ", gameState.gameOver())

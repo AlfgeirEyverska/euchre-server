@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"slices"
+	"strconv"
 )
 
 const targetScore = 10
@@ -20,6 +21,7 @@ type euchreGameState struct {
 	goingItAlone  bool
 	evenTeamScore int
 	oddTeamScore  int
+	userInterface coordinator
 }
 
 func (gs euchreGameState) String() string {
@@ -61,40 +63,41 @@ func (gs *euchreGameState) setFirstPlayer(p player) {
 	gs.currentPlayer = gs.players[p.id]
 }
 
+// TODO: fix validresponses handling with fmt.sprint
 func (gs *euchreGameState) dealerDiscard() {
-	var response int
+	// var response int
 	hand := gs.currentDealer.hand
+
+	message := fmt.Sprintln("\n\n\nPlayer ", gs.currentDealer.id)
+	message += fmt.Sprintln("You are picking up ", gs.flip)
+	message += fmt.Sprintln("Your cards are:\n", hand)
+	message += fmt.Sprintln("Discard | ")
+	for i := range hand {
+		message += fmt.Sprint(i+1, " for ", hand[i], " | ")
+	}
+	message += "\n"
+
+	var validResponses []string
+	for i := range hand {
+		validResponses = append(validResponses, string(i))
+	}
+
 	for {
-		fmt.Println("\n\n\nPlayer ", gs.currentDealer.id)
-		fmt.Println("You are picking up ", gs.flip)
-		fmt.Println("Your cards are:\n", hand)
-		fmt.Print("Discard | ")
-		for i := range hand {
-			fmt.Print(i+1, " for ", hand[i], " | ")
-		}
-		fmt.Println()
 
-		_, err := fmt.Scanf("%d", &response)
+		response := gs.userInterface.AskPlayerForX(*gs.currentDealer, message)
 
-		if err != nil {
-			fmt.Println("##############\nInvalid input. Input Error.\n##############")
-			continue
-		}
+		log.Println("Dealer answered ", response)
 
-		fmt.Println("You answered ", response)
-		var validResponses []int
-		for i := range hand {
-			validResponses = append(validResponses, i)
-
-		}
-		if !slices.Contains(validResponses, response) {
-			fmt.Println("##############\nInvalid input.\n##############")
-		} else {
-			discarded := hand[response-1]
-			fmt.Println("You are discarding the ", discarded)
+		if slices.Contains(validResponses, response) {
+			responseN, _ := strconv.Atoi(response)
+			responseN -= 1
+			discarded := hand[responseN]
+			log.Println("Dealer discarded the ", discarded)
 			gs.currentDealer.hand.replace(discarded, gs.flip)
 			gs.discard.replace(gs.flip, discarded)
 			break
+		} else {
+			gs.userInterface.MessagePlayer(*gs.currentDealer, "##############\nInvalid input.\n##############")
 		}
 	}
 }
@@ -232,6 +235,7 @@ func (gs *euchreGameState) deal() {
 	log.Println(gs.players)
 }
 
+// TODO: add to some api interface for text or json
 func (gs *euchreGameState) offerTheFlippedCard() (pickedUp bool) {
 	/*
 		buries the flipped card and returns false or
@@ -239,45 +243,45 @@ func (gs *euchreGameState) offerTheFlippedCard() (pickedUp bool) {
 	*/
 	for i := 0; i < numPlayers; i++ {
 
-		fmt.Println("\nSquiggle squiggle squiggle\n ")
+		// fmt.Println("\nSquiggle squiggle squiggle\n ")
 
-		validResponses := map[int]string{1: "Pass", 2: "Pick It Up", 3: "Pick It Up and Go It Alone"}
-		var response int
+		validResponses := map[string]string{"1": "Pass", "2": "Pick It Up", "3": "Pick It Up and Go It Alone"}
+
+		message := fmt.Sprintln("Player ", gs.currentPlayer.id)
+		message += fmt.Sprintln("Your cards are:\n", gs.currentPlayer.hand)
+		message += fmt.Sprintln(gs.flip, " was flipped.")
+		message += "Press | "
+		for i := 1; i <= 3; i++ {
+			istr := fmt.Sprint(i)
+			message += fmt.Sprint(i, " to ", validResponses[istr], " | ")
+		}
+
+		fmt.Println(validResponses)
+
+		var response string
 		for {
-			fmt.Println("Player ", gs.currentPlayer.id)
-			fmt.Println("Your cards are:\n", gs.currentPlayer.hand)
-			fmt.Println(gs.flip, " was flipped.")
-			prompt := "Press | "
-			for i := 1; i < len(validResponses)+1; i++ {
-				prompt += fmt.Sprint(i, " to ", validResponses[i], " | ")
-			}
-			fmt.Println(prompt)
-
-			_, err := fmt.Scanf("%d", &response)
-
-			if err != nil {
-				fmt.Println("##############\nInvalid input. Input Error.\n##############")
-				continue
-			}
+			response = gs.userInterface.AskPlayerForX(*gs.currentPlayer, message)
 
 			_, ok := validResponses[response]
 			if !ok {
-				fmt.Println("##############\nInvalid input.\n##############")
+				gs.userInterface.MessagePlayer(*gs.currentPlayer, "##############\nInvalid input.\n##############")
 			} else {
-				fmt.Println("Player ", gs.currentPlayer.id, " chose ", validResponses[response])
+				// TODO: could get the correct message (Json or text from interface here)
+				message = fmt.Sprintln("Player ", gs.currentPlayer.id, " chose ", validResponses[response])
+				gs.userInterface.Broadcast(message)
 				break
 			}
 		}
 
 		switch response {
-		case 1:
+		case "1":
 			gs.nextPlayer()
 			continue
-		case 2:
+		case "2":
 			gs.playerOrderedSuit(*gs.currentPlayer, gs.flip.suit)
 			pickedUp = true
 			return
-		case 3:
+		case "3":
 			gs.playerOrderedSuit(*gs.currentPlayer, gs.flip.suit)
 			pickedUp = true
 			gs.goingItAlone = true
@@ -290,79 +294,70 @@ func (gs *euchreGameState) offerTheFlippedCard() (pickedUp bool) {
 	return
 }
 
+// TODO: add to some api interface for text or json
 func (gs *euchreGameState) askPlayerToOrderOrPass() (pass bool) {
 	/*
 		passes and returns true or
 		sets trump, goingitalone, and whoOrdered and returns false
 	*/
 	rs := gs.flip.suit.remainingSuits()
-	validResponses := make(map[int]string)
-	responseSuits := make(map[int]suit)
-	validResponses[1] = "Pass"
+	validResponses := make(map[string]string)
+	responseSuits := make(map[string]suit)
+	validResponses["1"] = "Pass"
 	for i := 0; i < len(rs); i++ {
 		j := i + 2
-		validResponses[j] = fmt.Sprint(rs[i])
-		responseSuits[j] = rs[i]
+		validResponses[fmt.Sprint(j)] = fmt.Sprint(rs[i])
+		responseSuits[fmt.Sprint(j)] = rs[i]
 	}
-	fmt.Println(rs)
 
-	var response int
+	var response string
+	message := fmt.Sprintln("\n\n\nPlayer ", gs.currentPlayer.id)
+	message += fmt.Sprintln(gs.flip.suit, "s are out.")
+	message += fmt.Sprintln("Your cards are:\n", gs.currentPlayer.hand)
+	message += fmt.Sprint("Press: | ", 1, " to ", validResponses["1"], " | ")
+	for i := 2; i <= len(validResponses); i++ {
+		message += fmt.Sprint(i, " for ", validResponses[string(i)], "s | ")
+	}
+
 	for {
-		fmt.Println("\n\n\nPlayer ", gs.currentPlayer.id)
-		fmt.Println(gs.flip.suit, "s are out.")
-		fmt.Println("Your cards are:\n", gs.currentPlayer.hand)
-		prompt := fmt.Sprint("Press: | ", 1, " to ", validResponses[1], " | ")
-		for i := 2; i <= len(validResponses); i++ {
-			prompt += fmt.Sprint(i, " for ", validResponses[i], "s | ")
-		}
-		fmt.Println(prompt)
-
-		_, err := fmt.Scanf("%d", &response)
-
-		if err != nil {
-			fmt.Println("##############\nInvalid input. Input Error.\n##############")
-			continue
-		}
+		response = gs.userInterface.AskPlayerForX(*gs.currentPlayer, message)
 
 		_, ok := validResponses[response]
 		if !ok {
-			fmt.Println("##############\nInvalid input.\n##############")
+			gs.userInterface.MessagePlayer(*gs.currentPlayer, "##############\nInvalid input.\n##############")
 		} else {
-			if response != 1 {
+			if response != "1" {
 				gs.playerOrderedSuit(*gs.currentPlayer, responseSuits[response])
 			}
 			break
 		}
 	}
 
-	var aloneResponse int
-	if response == 1 {
+	var aloneResponse string
+	if response == "1" {
 		pass = true
 		return
 	} else {
 		pass = false
+
+		message = fmt.Sprintln("Player ", gs.currentPlayer)
+		message += fmt.Sprintln("Would you like to go it alone?")
+		message += fmt.Sprintln("Press: 1 for Yes. 2 for No")
 		for {
-			fmt.Println("Player ", gs.currentPlayer)
-			fmt.Println("Would you like to go it alone?")
-			fmt.Println("Press: 1 for Yes. 2 for No")
 
-			_, err := fmt.Scanf("%d", &aloneResponse)
+			aloneResponse = gs.userInterface.AskPlayerForX(*gs.currentPlayer, message)
 
-			if err != nil {
-				fmt.Println("##############\nInvalid input. Input Error.\n##############")
-				continue
-			}
-
-			if aloneResponse != 1 && aloneResponse != 2 {
-				fmt.Println("##############\nInvalid input.\n##############")
+			if aloneResponse != "1" && aloneResponse != "2" {
+				gs.userInterface.MessagePlayer(*gs.currentPlayer, "##############\nInvalid input.\n##############")
 			} else {
-				gs.goingItAlone = aloneResponse == 1
+				gs.goingItAlone = aloneResponse == "1"
 				return
 			}
 		}
 	}
 }
 
+// TODO: add to some api interface for text or json
 func (gs *euchreGameState) establishTrump() {
 
 	var pass bool
@@ -370,7 +365,7 @@ func (gs *euchreGameState) establishTrump() {
 		if gs.currentPlayer.id == gs.currentDealer.id {
 			pass = gs.askPlayerToOrderOrPass()
 			if pass {
-				fmt.Println("Dealer must choose a suit at this time.")
+				gs.userInterface.MessagePlayer(*gs.currentDealer, "Dealer must choose a suit at this time.")
 			} else {
 				return
 			}
@@ -488,39 +483,37 @@ func (gs euchreGameState) validPlay(p play, cardLead card) bool {
 	}
 }
 
+// TODO: add to some api interface for text or json
 func (gs *euchreGameState) askPlayerToPlayCard() play {
 
-	var response int
+	validOptions := make(map[string]card)
+
+	message := fmt.Sprintln("\n\n\nPlayer ", gs.currentPlayer.id)
+	message += fmt.Sprintln(gs.trump, "s are trump")
+	message += fmt.Sprintln("Your cards are:\n", gs.currentPlayer.hand, "\nWhat would you like to play?")
+
+	options := "Press | "
+	for i, v := range gs.currentPlayer.hand {
+		prettyIdx := string(i + 1)
+		options += fmt.Sprint(prettyIdx, " For ", v, " | ")
+		validOptions[prettyIdx] = v
+	}
+
+	var response string
+
 	for {
-		fmt.Println("\n\n\nPlayer ", gs.currentPlayer.id)
-		fmt.Println(gs.trump, "s are trump")
-		fmt.Println("Your cards are:\n", gs.currentPlayer.hand, "\nWhat would you like to play?")
-
-		validOptions := make(map[int]card)
-		options := "Press | "
-		for i, v := range gs.currentPlayer.hand {
-			prettyIdx := i + 1
-			options += fmt.Sprint(prettyIdx, " For ", v, " | ")
-			validOptions[prettyIdx] = v
-		}
-		fmt.Println(options)
-		// log.Println(validOptions)
-		_, err := fmt.Scanf("%d", &response)
-
-		if err != nil {
-			fmt.Println("##############\nInvalid input. Input Error.\n##############")
-			continue
-		}
+		response = gs.userInterface.AskPlayerForX(*gs.currentPlayer, message)
 
 		value, ok := validOptions[response]
 		if !ok {
-			fmt.Println("##############\nInvalid input.\n##############")
+			gs.userInterface.MessagePlayer(*gs.currentPlayer, "##############\nInvalid input.\n##############")
 		} else {
 			return play{gs.currentPlayer, value}
 		}
 	}
 }
 
+// TODO: add to some api interface for text or json
 func (gs *euchreGameState) playTrick() play {
 	var cardLead card
 	var plays []play
@@ -535,8 +528,9 @@ func (gs *euchreGameState) playTrick() play {
 	for playerN := 1; playerN < numPlayers; playerN++ {
 		// Get valid card from player
 		for {
-			fmt.Println(cardLead.suit, "s were lead")
-			fmt.Println(plays, "\nPlayed so far")
+			message := fmt.Sprintln(plays, "\nPlayed so far")
+			gs.userInterface.Broadcast(message)
+
 			currentPlay := gs.askPlayerToPlayCard()
 			if gs.validPlay(currentPlay, cardLead) {
 				plays = append(plays, currentPlay)
@@ -546,6 +540,7 @@ func (gs *euchreGameState) playTrick() play {
 				break
 			}
 			log.Println("Player ", gs.currentPlayer.id, " played invalid card.")
+			gs.userInterface.MessagePlayer(*gs.currentPlayer, "invalid card")
 		}
 	}
 	// check winning card
@@ -583,10 +578,12 @@ func (gs *euchreGameState) play5Tricks() {
 
 	gs.awardPoints(evenScore, oddScore)
 
-	fmt.Println("Even team score: ", gs.evenTeamScore, "\n", "Odd team score: ", gs.oddTeamScore)
+	message := fmt.Sprintln("Even team score: ", gs.evenTeamScore, "\n", "Odd team score: ", gs.oddTeamScore)
+	gs.userInterface.Broadcast(message)
+
 }
 
-func NewEuchreGameState() euchreGameState {
+func NewEuchreGameState(coord coordinator) euchreGameState {
 	myDeck := newDeck()
 
 	myPlayers := make([]*player, numPlayers)
@@ -602,6 +599,7 @@ func NewEuchreGameState() euchreGameState {
 		currentPlayer: myPlayers[1],
 		evenTeamScore: 0,
 		oddTeamScore:  0,
+		userInterface: coord,
 	}
 
 	return myGameState
