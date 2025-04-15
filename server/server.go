@@ -1,101 +1,120 @@
 package server
 
 import (
+	"encoding/json"
 	"fmt"
+	"log"
 	"net"
 )
 
-type server struct {
-	channels []chan string
+type playerConnection struct {
+	id            int
+	conn          net.Conn
+	broadcastChan chan string
+	messageChan   chan string
+	responseChan  chan string
 }
 
-func (s server) broadcast(message string) {
-	for i := range s.channels {
-		s.channels[i] <- message
+type server struct {
+	connections []*playerConnection
+}
+
+func (s server) Broadcast(message string) {
+	for i := range s.connections {
+		s.connections[i].broadcastChan <- message + "\n"
 	}
 }
 
-// func target() {}
+func (s server) MessagePlayer(playerID int, message string) {
+	s.connections[playerID].broadcastChan <- message + "\n"
+}
 
-// func sendMessage(conn net.Conn, message string) {
+func (s server) AskPlayerForX(player int, message string) string {
+	s.connections[player].messageChan <- message + "\n"
+	x := <-s.connections[player].responseChan
+	return x
+}
 
-// }
+func greetPlayer(player playerConnection) {
+	playerIDMsg := map[string]int{"PlayerID": player.id}
+	message, _ := json.Marshal(playerIDMsg)
+	player.broadcastChan <- string(message) + "\n"
+}
 
-func ServeGame() {
+func (s server) AskPlayerForName(playerID int) string {
+
+	playerName := s.AskPlayerForX(playerID, "What is your name?")
+
+	response := map[string]string{}
+	if err := json.Unmarshal([]byte(playerName), &response); err != nil {
+		log.Fatalln(err)
+	}
+
+	name, ok := response["Name"]
+	if !ok {
+		log.Fatalln("no name given")
+	}
+
+	message := fmt.Sprint("Hello, ", name)
+	s.MessagePlayer(playerID, message)
+	return playerName
+}
+
+func NewGameListener() net.Listener {
 	ln, err := net.Listen("tcp", ":8080")
 	if err != nil {
-		fmt.Println(err)
-		return
+		log.Fatalln(err)
 	}
+	return ln
+}
 
-	// Accept incoming connections and handle them
+func NewGameServer(ln net.Listener) server {
+
 	playerID := 0
-	var playerChannels []chan string
+	var playerConnections []*playerConnection
 	for i := 0; i < 4; i++ {
 		conn, err := ln.Accept()
 		if err != nil {
 			fmt.Println(err)
 			continue
 		}
-		playerChannels = append(playerChannels, make(chan string))
+		player := playerConnection{playerID, conn, make(chan string, 2), make(chan string, 2), make(chan string, 2)}
+		playerConnections = append(playerConnections, &player)
 		// Handle the connection in a new goroutine
-		go handleConnection(conn, playerID, playerChannels[playerID])
+		go handleConnection(player)
+		greetPlayer(player)
 		playerID++
 	}
-	srv := server{playerChannels}
-	fmt.Println("Well now what?")
-	srv.broadcast("You're probably wondering why I have brought you here...\n")
+
+	return server{playerConnections}
+
 }
 
-func handleConnection(conn net.Conn, id int, ch chan string) {
+func handleConnection(playerConn playerConnection) {
 	// Close the connection when we're done
-	defer conn.Close()
+	defer playerConn.conn.Close()
 
-	message := fmt.Sprint("Hello, you are player ", id, "\n")
-	_, err := conn.Write([]byte(message))
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-
-	message = "Enter your name:\n"
-	n, err := conn.Write([]byte(message))
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-
-	buf := make([]byte, 1024)
-	_, err = conn.Read(buf)
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-
-	playerName := string(buf[:n])
-	message = fmt.Sprint("Hello, ", playerName, "\n")
-	_, err = conn.Write([]byte(message))
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-	// Read incoming data
 	for {
-		msg := <-ch
-		_, err = conn.Write([]byte(msg))
-		if err != nil {
-			fmt.Println(err)
-			return
+		select {
+		case msg := <-playerConn.broadcastChan:
+			_, err := playerConn.conn.Write([]byte(msg))
+			if err != nil {
+				fmt.Println(err)
+				return
+			}
+		case msg := <-playerConn.messageChan:
+			_, err := playerConn.conn.Write([]byte(msg))
+			if err != nil {
+				fmt.Println(err)
+				return
+			}
+			buf := make([]byte, 1024)
+			n, err := playerConn.conn.Read(buf)
+			if err != nil {
+				fmt.Println(err)
+				return
+			}
+			playerConn.responseChan <- string(buf[:n])
 		}
-		// buf := make([]byte, 1024)
-		// _, err = conn.Read(buf)
-		// if err != nil {
-		// 	fmt.Println(err)
-		// 	return
-		// }
-		// // ch <- string(buf)
-
-		// // Print the incoming data
-		// fmt.Printf("Received: %s", buf)
 	}
 }

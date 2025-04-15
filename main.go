@@ -1,12 +1,34 @@
 package main
 
-import (
-	"euchre/server"
-	"fmt"
-)
+import "euchre/euchre"
+
+// import (
+// 	"euchre/bots/randomBot"
+// 	"euchre/server"
+// 	"fmt"
+// 	"time"
+// )
 
 func main() {
-	fmt.Println("hello, world!")
-	// euchre.PlayEuchre()
-	server.ServeGame()
+
+	euchre.PlayEuchre()
+
+	// listener := server.NewGameListener()
+
+	// for i := 0; i < 4; i++ {
+	// 	go randomBot.Play()
+	// }
+
+	// gameServer := server.NewGameServer(listener)
+
+	// for i := 0; i < 4; i++ {
+	// 	gameServer.AskPlayerForName(i)
+	// }
+	// fmt.Println("Well now what?")
+	// gameServer.Broadcast("You're probably wondering why I have brought you here...")
+
+	// for {
+	// 	gameServer.Broadcast("Waiting...")
+	// 	time.Sleep(2 * time.Second)
+	// }
 }
