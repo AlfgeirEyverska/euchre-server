@@ -16,7 +16,7 @@ func PlayEuchre() {
 	log.SetOutput(logFile)
 	log.SetFlags(log.LstdFlags | log.Lshortfile)
 
-	gameState := NewEuchreGameState(debugCLI{})
+	gameState := NewEuchreGameState(debugCLI{}, textAPI{})
 
 	log.Println("established game state")
 	log.Println("game over: ", gameState.gameOver())

@@ -22,6 +22,7 @@ type euchreGameState struct {
 	evenTeamScore int
 	oddTeamScore  int
 	userInterface coordinator
+	generator     messageGenerator
 }
 
 func (gs euchreGameState) String() string {
@@ -63,28 +64,21 @@ func (gs *euchreGameState) setFirstPlayer(p player) {
 	gs.currentPlayer = gs.players[p.id]
 }
 
-// TODO: fix validresponses handling with fmt.sprint
 func (gs *euchreGameState) dealerDiscard() {
 	// var response int
 	hand := gs.currentDealer.hand
 
-	message := fmt.Sprintln("\n\n\nPlayer ", gs.currentDealer.id)
-	message += fmt.Sprintln("You are picking up ", gs.flip)
-	message += fmt.Sprintln("Your cards are:\n", hand)
-	message += fmt.Sprintln("Discard | ")
-	for i := range hand {
-		message += fmt.Sprint(i+1, " for ", hand[i], " | ")
-	}
-	message += "\n"
+	// fix here
+	message := gs.generator.DealerDiscard(gs.currentDealer.id, gs.flip, gs.currentDealer.hand)
 
 	var validResponses []string
 	for i := range hand {
-		validResponses = append(validResponses, string(i))
+		validResponses = append(validResponses, fmt.Sprint(i))
 	}
 
 	for {
 
-		response := gs.userInterface.AskPlayerForX(*gs.currentDealer, message)
+		response := gs.userInterface.AskPlayerForX(gs.currentDealer.id, message)
 
 		log.Println("Dealer answered ", response)
 
@@ -97,7 +91,7 @@ func (gs *euchreGameState) dealerDiscard() {
 			gs.discard.replace(gs.flip, discarded)
 			break
 		} else {
-			gs.userInterface.MessagePlayer(*gs.currentDealer, "##############\nInvalid input.\n##############")
+			gs.userInterface.MessagePlayer(gs.currentDealer.id, gs.generator.InvalidInput())
 		}
 	}
 }
@@ -247,24 +241,14 @@ func (gs *euchreGameState) offerTheFlippedCard() (pickedUp bool) {
 
 		validResponses := map[string]string{"1": "Pass", "2": "Pick It Up", "3": "Pick It Up and Go It Alone"}
 
-		message := fmt.Sprintln("Player ", gs.currentPlayer.id)
-		message += fmt.Sprintln("Your cards are:\n", gs.currentPlayer.hand)
-		message += fmt.Sprintln(gs.flip, " was flipped.")
-		message += "Press | "
-		for i := 1; i <= 3; i++ {
-			istr := fmt.Sprint(i)
-			message += fmt.Sprint(i, " to ", validResponses[istr], " | ")
-		}
-
-		fmt.Println(validResponses)
-
+		message := gs.generator.PickUpOrPass(gs.currentPlayer.id, gs.flip, gs.currentPlayer.hand)
 		var response string
 		for {
-			response = gs.userInterface.AskPlayerForX(*gs.currentPlayer, message)
+			response = gs.userInterface.AskPlayerForX(gs.currentPlayer.id, message)
 
 			_, ok := validResponses[response]
 			if !ok {
-				gs.userInterface.MessagePlayer(*gs.currentPlayer, "##############\nInvalid input.\n##############")
+				gs.userInterface.MessagePlayer(gs.currentPlayer.id, "##############\nInvalid input.\n##############")
 			} else {
 				// TODO: could get the correct message (Json or text from interface here)
 				message = fmt.Sprintln("Player ", gs.currentPlayer.id, " chose ", validResponses[response])
@@ -294,7 +278,6 @@ func (gs *euchreGameState) offerTheFlippedCard() (pickedUp bool) {
 	return
 }
 
-// TODO: add to some api interface for text or json
 func (gs *euchreGameState) askPlayerToOrderOrPass() (pass bool) {
 	/*
 		passes and returns true or
@@ -310,21 +293,15 @@ func (gs *euchreGameState) askPlayerToOrderOrPass() (pass bool) {
 		responseSuits[fmt.Sprint(j)] = rs[i]
 	}
 
-	var response string
-	message := fmt.Sprintln("\n\n\nPlayer ", gs.currentPlayer.id)
-	message += fmt.Sprintln(gs.flip.suit, "s are out.")
-	message += fmt.Sprintln("Your cards are:\n", gs.currentPlayer.hand)
-	message += fmt.Sprint("Press: | ", 1, " to ", validResponses["1"], " | ")
-	for i := 2; i <= len(validResponses); i++ {
-		message += fmt.Sprint(i, " for ", validResponses[string(i)], "s | ")
-	}
+	message := gs.generator.OrderOrPass(gs.currentPlayer.id, gs.flip, gs.currentPlayer.hand)
 
+	var response string
 	for {
-		response = gs.userInterface.AskPlayerForX(*gs.currentPlayer, message)
+		response = gs.userInterface.AskPlayerForX(gs.currentPlayer.id, message)
 
 		_, ok := validResponses[response]
 		if !ok {
-			gs.userInterface.MessagePlayer(*gs.currentPlayer, "##############\nInvalid input.\n##############")
+			gs.userInterface.MessagePlayer(gs.currentPlayer.id, gs.generator.InvalidInput())
 		} else {
 			if response != "1" {
 				gs.playerOrderedSuit(*gs.currentPlayer, responseSuits[response])
@@ -340,15 +317,13 @@ func (gs *euchreGameState) askPlayerToOrderOrPass() (pass bool) {
 	} else {
 		pass = false
 
-		message = fmt.Sprintln("Player ", gs.currentPlayer)
-		message += fmt.Sprintln("Would you like to go it alone?")
-		message += fmt.Sprintln("Press: 1 for Yes. 2 for No")
+		message := gs.generator.GoItAlone(gs.currentPlayer.id)
 		for {
 
-			aloneResponse = gs.userInterface.AskPlayerForX(*gs.currentPlayer, message)
+			aloneResponse = gs.userInterface.AskPlayerForX(gs.currentPlayer.id, message)
 
 			if aloneResponse != "1" && aloneResponse != "2" {
-				gs.userInterface.MessagePlayer(*gs.currentPlayer, "##############\nInvalid input.\n##############")
+				gs.userInterface.MessagePlayer(gs.currentPlayer.id, gs.generator.InvalidInput())
 			} else {
 				gs.goingItAlone = aloneResponse == "1"
 				return
@@ -357,7 +332,6 @@ func (gs *euchreGameState) askPlayerToOrderOrPass() (pass bool) {
 	}
 }
 
-// TODO: add to some api interface for text or json
 func (gs *euchreGameState) establishTrump() {
 
 	var pass bool
@@ -365,7 +339,7 @@ func (gs *euchreGameState) establishTrump() {
 		if gs.currentPlayer.id == gs.currentDealer.id {
 			pass = gs.askPlayerToOrderOrPass()
 			if pass {
-				gs.userInterface.MessagePlayer(*gs.currentDealer, "Dealer must choose a suit at this time.")
+				gs.userInterface.MessagePlayer(gs.currentDealer.id, gs.generator.DealerMustOrder())
 			} else {
 				return
 			}
@@ -486,39 +460,33 @@ func (gs euchreGameState) validPlay(p play, cardLead card) bool {
 // TODO: add to some api interface for text or json
 func (gs *euchreGameState) askPlayerToPlayCard() play {
 
-	validOptions := make(map[string]card)
+	validResponses := make(map[string]card)
 
-	message := fmt.Sprintln("\n\n\nPlayer ", gs.currentPlayer.id)
-	message += fmt.Sprintln(gs.trump, "s are trump")
-	message += fmt.Sprintln("Your cards are:\n", gs.currentPlayer.hand, "\nWhat would you like to play?")
-
-	options := "Press | "
 	for i, v := range gs.currentPlayer.hand {
-		prettyIdx := string(i + 1)
-		options += fmt.Sprint(prettyIdx, " For ", v, " | ")
-		validOptions[prettyIdx] = v
+		prettyIdx := fmt.Sprint(i + 1)
+		validResponses[prettyIdx] = v
 	}
 
+	message := gs.generator.PlayCard(gs.currentPlayer.id, gs.trump, gs.currentPlayer.hand)
 	var response string
 
 	for {
-		response = gs.userInterface.AskPlayerForX(*gs.currentPlayer, message)
+		response = gs.userInterface.AskPlayerForX(gs.currentPlayer.id, message)
 
-		value, ok := validOptions[response]
+		value, ok := validResponses[response]
 		if !ok {
-			gs.userInterface.MessagePlayer(*gs.currentPlayer, "##############\nInvalid input.\n##############")
+			gs.userInterface.MessagePlayer(gs.currentPlayer.id, "##############\nInvalid input.\n##############")
 		} else {
 			return play{gs.currentPlayer, value}
 		}
 	}
 }
 
-// TODO: add to some api interface for text or json
 func (gs *euchreGameState) playTrick() play {
 	var cardLead card
 	var plays []play
 
-	// Lead
+	// First player can't play invalid card
 	currentPlay := gs.askPlayerToPlayCard()
 	plays = append(plays, currentPlay)
 	gs.currentPlayer.hand.remove(currentPlay.cardPlayed)
@@ -528,7 +496,7 @@ func (gs *euchreGameState) playTrick() play {
 	for playerN := 1; playerN < numPlayers; playerN++ {
 		// Get valid card from player
 		for {
-			message := fmt.Sprintln(plays, "\nPlayed so far")
+			message := gs.generator.PlayedSoFar(plays)
 			gs.userInterface.Broadcast(message)
 
 			currentPlay := gs.askPlayerToPlayCard()
@@ -540,7 +508,7 @@ func (gs *euchreGameState) playTrick() play {
 				break
 			}
 			log.Println("Player ", gs.currentPlayer.id, " played invalid card.")
-			gs.userInterface.MessagePlayer(*gs.currentPlayer, "invalid card")
+			gs.userInterface.MessagePlayer(gs.currentPlayer.id, gs.generator.InvalidCard())
 		}
 	}
 	// check winning card
@@ -570,7 +538,9 @@ func (gs *euchreGameState) play5Tricks() {
 			oddScore++
 		}
 
-		log.Println("Even Score ", evenScore, " | Odd score", oddScore)
+		message := gs.generator.TricksSoFar(evenScore, oddScore)
+		gs.userInterface.Broadcast(message)
+		log.Println("Even Trick Score ", evenScore, " | Odd Trick Score", oddScore)
 
 		// Give the winner control of the next trick
 		gs.setFirstPlayer(*winningPlay.cardPlayer)
@@ -583,7 +553,7 @@ func (gs *euchreGameState) play5Tricks() {
 
 }
 
-func NewEuchreGameState(coord coordinator) euchreGameState {
+func NewEuchreGameState(coord coordinator, gen messageGenerator) euchreGameState {
 	myDeck := newDeck()
 
 	myPlayers := make([]*player, numPlayers)
@@ -600,6 +570,7 @@ func NewEuchreGameState(coord coordinator) euchreGameState {
 		evenTeamScore: 0,
 		oddTeamScore:  0,
 		userInterface: coord,
+		generator:     gen,
 	}
 
 	return myGameState

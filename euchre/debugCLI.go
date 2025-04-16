@@ -3,14 +3,14 @@ package euchre
 import "fmt"
 
 type coordinator interface {
-	AskPlayerForX(p player, message string) string
-	MessagePlayer(p player, message string)
-	Broadcast(message string)
+	AskPlayerForX(int, string) string
+	MessagePlayer(int, string)
+	Broadcast(string)
 }
 
 type debugCLI struct{}
 
-func (cli debugCLI) AskPlayerForX(p player, message string) string {
+func (cli debugCLI) AskPlayerForX(playerID int, message string) string {
 	fmt.Println(message)
 	var response string
 	_, err := fmt.Scanf("%s", &response)
@@ -20,7 +20,7 @@ func (cli debugCLI) AskPlayerForX(p player, message string) string {
 	return response
 }
 
-func (cli debugCLI) MessagePlayer(p player, message string) {
+func (cli debugCLI) MessagePlayer(playerID int, message string) {
 	fmt.Println(message)
 }
 
