@@ -91,7 +91,6 @@ func NewGameServer(ln net.Listener) server {
 }
 
 func handleConnection(playerConn playerConnection) {
-	// Close the connection when we're done
 	defer playerConn.conn.Close()
 
 	for {

@@ -37,14 +37,14 @@ type euchreGameState struct {
 	discard       deck
 	flip          card
 	trump         suit
-	currentDealer *player
-	currentPlayer *player
+	CurrentDealer *player
+	CurrentPlayer *player
 	whoOrdered    *player
 	goingItAlone  bool
 	evenTeamScore int
 	oddTeamScore  int
-	userInterface coordinator
-	messages      messageGenerator
+	UserInterface coordinator
+	Messages      messageGenerator
 }
 
 func (gs euchreGameState) String() string {
@@ -57,8 +57,8 @@ func (gs euchreGameState) String() string {
 	str += fmt.Sprint(gs.trump, "s Are Trump\n")
 	str += fmt.Sprint(gs.whoOrdered, " Ordered Trump\n")
 	str += fmt.Sprint("Going it alone: ", gs.goingItAlone, "\n")
-	str += fmt.Sprint("Current Dealer: ", gs.currentDealer, "\n")
-	str += fmt.Sprint("CurrentPlayer: ", gs.currentPlayer, "\n")
+	str += fmt.Sprint("Current Dealer: ", gs.CurrentDealer, "\n")
+	str += fmt.Sprint("CurrentPlayer: ", gs.CurrentPlayer, "\n")
 	str += fmt.Sprint("Even Team Score: ", gs.evenTeamScore, "\n")
 	str += fmt.Sprint("Odd Team Score: ", gs.oddTeamScore, "\n")
 
@@ -66,32 +66,32 @@ func (gs euchreGameState) String() string {
 }
 
 func nextPlayerID(p player) int {
-	return (p.id + 1) % numPlayers
+	return (p.ID + 1) % numPlayers
 }
 
-func (gs *euchreGameState) nextDealer() {
-	gs.currentDealer = gs.players[nextPlayerID(*gs.currentDealer)]
-	gs.currentPlayer = gs.players[nextPlayerID(*gs.currentDealer)]
+func (gs *euchreGameState) NextDealer() {
+	gs.CurrentDealer = gs.players[nextPlayerID(*gs.CurrentDealer)]
+	gs.CurrentPlayer = gs.players[nextPlayerID(*gs.CurrentDealer)]
 }
 
 func (gs *euchreGameState) nextPlayer() {
-	gs.currentPlayer = gs.players[nextPlayerID(*gs.currentPlayer)]
+	gs.CurrentPlayer = gs.players[nextPlayerID(*gs.CurrentPlayer)]
 }
 
-func (gs *euchreGameState) resetFirstPlayer() {
-	gs.currentPlayer = gs.players[nextPlayerID(*gs.currentDealer)]
+func (gs *euchreGameState) ResetFirstPlayer() {
+	gs.CurrentPlayer = gs.players[nextPlayerID(*gs.CurrentDealer)]
 }
 
 func (gs *euchreGameState) setFirstPlayer(p player) {
-	gs.currentPlayer = gs.players[p.id]
+	gs.CurrentPlayer = gs.players[p.ID]
 }
 
-func (gs *euchreGameState) dealerDiscard() {
+func (gs *euchreGameState) DealerDiscard() {
 	// var response int
-	hand := gs.currentDealer.hand
+	hand := gs.CurrentDealer.hand
 
 	// fix here
-	message := gs.messages.DealerDiscard(gs.currentDealer.id, gs.trump, gs.flip, gs.currentDealer.hand)
+	message := gs.Messages.DealerDiscard(gs.CurrentDealer.ID, gs.trump, gs.flip, gs.CurrentDealer.hand)
 
 	var validResponses []string
 	for i := range hand {
@@ -100,7 +100,7 @@ func (gs *euchreGameState) dealerDiscard() {
 
 	for {
 
-		response := gs.userInterface.AskPlayerForX(gs.currentDealer.id, message)
+		response := gs.UserInterface.AskPlayerForX(gs.CurrentDealer.ID, message)
 
 		log.Println("Dealer answered ", response)
 
@@ -109,11 +109,11 @@ func (gs *euchreGameState) dealerDiscard() {
 			responseN -= 1
 			discarded := hand[responseN]
 			log.Println("Dealer discarded the ", discarded)
-			gs.currentDealer.hand.replace(discarded, gs.flip)
+			gs.CurrentDealer.hand.replace(discarded, gs.flip)
 			gs.discard.replace(gs.flip, discarded)
 			break
 		} else {
-			gs.userInterface.MessagePlayer(gs.currentDealer.id, gs.messages.InvalidInput())
+			gs.UserInterface.MessagePlayer(gs.CurrentDealer.ID, gs.Messages.InvalidInput())
 		}
 	}
 }
@@ -121,7 +121,7 @@ func (gs *euchreGameState) dealerDiscard() {
 func (gs euchreGameState) numPoints(evenScore int, oddScore int) int {
 
 	if gs.goingItAlone {
-		if gs.whoOrdered.id%2 == 0 {
+		if gs.whoOrdered.ID%2 == 0 {
 			// even team
 			if evenScore == 5 {
 				return 4
@@ -144,7 +144,7 @@ func (gs euchreGameState) numPoints(evenScore int, oddScore int) int {
 			}
 		}
 	} else {
-		if gs.whoOrdered.id%2 == 0 {
+		if gs.whoOrdered.ID%2 == 0 {
 			// even team
 			if evenScore == 5 {
 				return 2
@@ -193,11 +193,11 @@ func (gs *euchreGameState) playerOrderedSuit(p player, s suit) {
 	gs.trump = s
 }
 
-func (gs euchreGameState) gameOver() bool {
+func (gs euchreGameState) GameOver() bool {
 	return gs.evenTeamScore >= targetScore || gs.oddTeamScore >= targetScore
 }
 
-func (gs *euchreGameState) deal() {
+func (gs *euchreGameState) Deal() {
 
 	var hand1 []card
 	var hand2 []card
@@ -242,7 +242,7 @@ func (gs *euchreGameState) deal() {
 	}
 
 	for i := 0; i < numPlayers; i++ {
-		gs.currentPlayer.setHand(hands[i])
+		gs.CurrentPlayer.setHand(hands[i])
 		gs.nextPlayer()
 	}
 
@@ -252,7 +252,7 @@ func (gs *euchreGameState) deal() {
 }
 
 // TODO: add to some api interface for text or json
-func (gs *euchreGameState) offerTheFlippedCard() (pickedUp bool) {
+func (gs *euchreGameState) OfferTheFlippedCard() (pickedUp bool) {
 	/*
 		buries the flipped card and returns false or
 		sets trump, goingitalone, and whoOrdered and returns true
@@ -263,14 +263,14 @@ func (gs *euchreGameState) offerTheFlippedCard() (pickedUp bool) {
 
 		validResponses := map[string]string{"1": "Pass", "2": "Pick It Up", "3": "Pick It Up and Go It Alone"}
 
-		message := gs.messages.PickUpOrPass(gs.currentPlayer.id, gs.trump, gs.flip, gs.currentPlayer.hand)
+		message := gs.Messages.PickUpOrPass(gs.CurrentPlayer.ID, gs.trump, gs.flip, gs.CurrentPlayer.hand)
 		var response string
 		for {
-			response = gs.userInterface.AskPlayerForX(gs.currentPlayer.id, message)
+			response = gs.UserInterface.AskPlayerForX(gs.CurrentPlayer.ID, message)
 
 			_, ok := validResponses[response]
 			if !ok {
-				gs.userInterface.MessagePlayer(gs.currentPlayer.id, "##############\nInvalid input.\n##############")
+				gs.UserInterface.MessagePlayer(gs.CurrentPlayer.ID, gs.Messages.InvalidInput())
 			} else {
 				break
 			}
@@ -281,17 +281,17 @@ func (gs *euchreGameState) offerTheFlippedCard() (pickedUp bool) {
 			gs.nextPlayer()
 			continue
 		case "2":
-			gs.playerOrderedSuit(*gs.currentPlayer, gs.flip.suit)
+			gs.playerOrderedSuit(*gs.CurrentPlayer, gs.flip.suit)
 			pickedUp = true
-			message = gs.messages.PlayerOrderedSuit(gs.currentPlayer.id, gs.trump)
-			gs.userInterface.Broadcast(message)
+			message = gs.Messages.PlayerOrderedSuit(gs.CurrentPlayer.ID, gs.trump)
+			gs.UserInterface.Broadcast(message)
 			return
 		case "3":
-			gs.playerOrderedSuit(*gs.currentPlayer, gs.flip.suit)
+			gs.playerOrderedSuit(*gs.CurrentPlayer, gs.flip.suit)
 			pickedUp = true
 			gs.goingItAlone = true
-			message = gs.messages.PlayerOrderedSuitAndGoingAlone(gs.currentPlayer.id, gs.trump)
-			gs.userInterface.Broadcast(message)
+			message = gs.Messages.PlayerOrderedSuitAndGoingAlone(gs.CurrentPlayer.ID, gs.trump)
+			gs.UserInterface.Broadcast(message)
 			return
 		default:
 			log.Fatal("Player sent invalid response and it was accepted. This should never happen!!")
@@ -316,18 +316,18 @@ func (gs *euchreGameState) askPlayerToOrderOrPass() (pass bool) {
 		responseSuits[fmt.Sprint(j)] = rs[i]
 	}
 
-	message := gs.messages.OrderOrPass(gs.currentPlayer.id, gs.trump, gs.flip, gs.currentPlayer.hand)
+	message := gs.Messages.OrderOrPass(gs.CurrentPlayer.ID, gs.trump, gs.flip, gs.CurrentPlayer.hand)
 
 	var response string
 	for {
-		response = gs.userInterface.AskPlayerForX(gs.currentPlayer.id, message)
+		response = gs.UserInterface.AskPlayerForX(gs.CurrentPlayer.ID, message)
 
 		_, ok := validResponses[response]
 		if !ok {
-			gs.userInterface.MessagePlayer(gs.currentPlayer.id, gs.messages.InvalidInput())
+			gs.UserInterface.MessagePlayer(gs.CurrentPlayer.ID, gs.Messages.InvalidInput())
 		} else {
 			if response != "1" {
-				gs.playerOrderedSuit(*gs.currentPlayer, responseSuits[response])
+				gs.playerOrderedSuit(*gs.CurrentPlayer, responseSuits[response])
 			}
 			break
 		}
@@ -340,22 +340,22 @@ func (gs *euchreGameState) askPlayerToOrderOrPass() (pass bool) {
 	} else {
 		pass = false
 
-		message := gs.messages.GoItAlone(gs.currentPlayer.id)
+		message := gs.Messages.GoItAlone(gs.CurrentPlayer.ID)
 		for {
 
-			aloneResponse = gs.userInterface.AskPlayerForX(gs.currentPlayer.id, message)
+			aloneResponse = gs.UserInterface.AskPlayerForX(gs.CurrentPlayer.ID, message)
 
 			if aloneResponse != "1" && aloneResponse != "2" {
-				gs.userInterface.MessagePlayer(gs.currentPlayer.id, gs.messages.InvalidInput())
+				gs.UserInterface.MessagePlayer(gs.CurrentPlayer.ID, gs.Messages.InvalidInput())
 			} else {
 				gs.goingItAlone = aloneResponse == "1"
 
 				if gs.goingItAlone {
-					message = gs.messages.PlayerOrderedSuitAndGoingAlone(gs.currentPlayer.id, responseSuits[response])
-					gs.userInterface.Broadcast(message)
+					message = gs.Messages.PlayerOrderedSuitAndGoingAlone(gs.CurrentPlayer.ID, responseSuits[response])
+					gs.UserInterface.Broadcast(message)
 				} else {
-					message = gs.messages.PlayerOrderedSuit(gs.currentPlayer.id, responseSuits[response])
-					gs.userInterface.Broadcast(message)
+					message = gs.Messages.PlayerOrderedSuit(gs.CurrentPlayer.ID, responseSuits[response])
+					gs.UserInterface.Broadcast(message)
 				}
 
 				return
@@ -364,14 +364,14 @@ func (gs *euchreGameState) askPlayerToOrderOrPass() (pass bool) {
 	}
 }
 
-func (gs *euchreGameState) establishTrump() {
+func (gs *euchreGameState) EstablishTrump() {
 
 	var pass bool
 	for {
-		if gs.currentPlayer.id == gs.currentDealer.id {
+		if gs.CurrentPlayer.ID == gs.CurrentDealer.ID {
 			pass = gs.askPlayerToOrderOrPass()
 			if pass {
-				gs.userInterface.MessagePlayer(gs.currentDealer.id, gs.messages.DealerMustOrder())
+				gs.UserInterface.MessagePlayer(gs.CurrentDealer.ID, gs.Messages.DealerMustOrder())
 			} else {
 				return
 			}
@@ -502,11 +502,11 @@ func (gs euchreGameState) validPlay(p play, cardLead card) bool {
 func (gs euchreGameState) validPlays(firstPlayer bool, cardLead card) []card {
 
 	if firstPlayer {
-		return gs.currentPlayer.hand
+		return gs.CurrentPlayer.hand
 	} else {
 		vps := []card{}
-		for _, v := range gs.currentPlayer.hand {
-			if gs.validPlay(play{gs.currentPlayer, v}, cardLead) {
+		for _, v := range gs.CurrentPlayer.hand {
+			if gs.validPlay(play{gs.CurrentPlayer, v}, cardLead) {
 				vps = append(vps, v)
 			}
 		}
@@ -526,17 +526,17 @@ func (gs *euchreGameState) askPlayerToPlayCard(firstPlayer bool, cardLead card) 
 		validResponses[prettyIdx] = v
 	}
 
-	message := gs.messages.PlayCard(gs.currentPlayer.id, gs.trump, gs.flip, playableCards)
+	message := gs.Messages.PlayCard(gs.CurrentPlayer.ID, gs.trump, gs.flip, playableCards)
 	var response string
 
 	for {
-		response = gs.userInterface.AskPlayerForX(gs.currentPlayer.id, message)
+		response = gs.UserInterface.AskPlayerForX(gs.CurrentPlayer.ID, message)
 
 		value, ok := validResponses[response]
 		if !ok {
-			gs.userInterface.MessagePlayer(gs.currentPlayer.id, "##############\nInvalid input.\n##############")
+			gs.UserInterface.MessagePlayer(gs.CurrentPlayer.ID, "##############\nInvalid input.\n##############")
 		} else {
-			return play{gs.currentPlayer, value}
+			return play{gs.CurrentPlayer, value}
 		}
 	}
 }
@@ -548,26 +548,26 @@ func (gs *euchreGameState) playTrick() play {
 	// First player can't play invalid card
 	currentPlay := gs.askPlayerToPlayCard(true, card{})
 	plays = append(plays, currentPlay)
-	gs.currentPlayer.hand.remove(currentPlay.cardPlayed)
+	gs.CurrentPlayer.hand.remove(currentPlay.cardPlayed)
 	cardLead = currentPlay.cardPlayed
 	gs.nextPlayer()
 
 	for playerN := 1; playerN < numPlayers; playerN++ {
 		// Get valid card from player
 		for {
-			message := gs.messages.PlayedSoFar(plays)
-			gs.userInterface.Broadcast(message)
+			message := gs.Messages.PlayedSoFar(plays)
+			gs.UserInterface.Broadcast(message)
 
 			currentPlay := gs.askPlayerToPlayCard(false, cardLead)
 			if gs.validPlay(currentPlay, cardLead) {
 				plays = append(plays, currentPlay)
-				gs.currentPlayer.hand.remove(currentPlay.cardPlayed)
-				log.Println(gs.currentPlayer.hand, " After Removal")
+				gs.CurrentPlayer.hand.remove(currentPlay.cardPlayed)
+				log.Println(gs.CurrentPlayer.hand, " After Removal")
 				gs.nextPlayer()
 				break
 			}
-			log.Println("Player ", gs.currentPlayer.id, " played invalid card.")
-			gs.userInterface.MessagePlayer(gs.currentPlayer.id, gs.messages.InvalidCard())
+			log.Println("Player ", gs.CurrentPlayer.ID, " played invalid card.")
+			gs.UserInterface.MessagePlayer(gs.CurrentPlayer.ID, gs.Messages.InvalidCard())
 		}
 	}
 	// check winning card
@@ -581,7 +581,7 @@ func (gs *euchreGameState) playTrick() play {
 	return winningPlay
 }
 
-func (gs *euchreGameState) play5Tricks() {
+func (gs *euchreGameState) Play5Tricks() {
 	evenScore := 0
 	oddScore := 0
 
@@ -591,14 +591,14 @@ func (gs *euchreGameState) play5Tricks() {
 
 		winningPlay := gs.playTrick()
 
-		if winningPlay.cardPlayer.id%2 == 0 {
+		if winningPlay.cardPlayer.ID%2 == 0 {
 			evenScore++
 		} else {
 			oddScore++
 		}
 
-		message := gs.messages.TricksSoFar(evenScore, oddScore)
-		gs.userInterface.Broadcast(message)
+		message := gs.Messages.TricksSoFar(evenScore, oddScore)
+		gs.UserInterface.Broadcast(message)
 		log.Println("Even Trick Score ", evenScore, " | Odd Trick Score", oddScore)
 
 		// Give the winner control of the next trick
@@ -608,7 +608,7 @@ func (gs *euchreGameState) play5Tricks() {
 	gs.awardPoints(evenScore, oddScore)
 
 	message := fmt.Sprintln("Even team score: ", gs.evenTeamScore, "\n", "Odd team score: ", gs.oddTeamScore)
-	gs.userInterface.Broadcast(message)
+	gs.UserInterface.Broadcast(message)
 
 }
 
@@ -617,19 +617,20 @@ func NewEuchreGameState(coord coordinator, gen messageGenerator) euchreGameState
 
 	myPlayers := make([]*player, numPlayers)
 	for i := 0; i < numPlayers; i++ {
-		mp := player{id: i}
+		mp := player{ID: i}
 		myPlayers[i] = &mp
 	}
 
 	myGameState := euchreGameState{
 		gameDeck:      myDeck,
 		players:       myPlayers,
-		currentDealer: myPlayers[0],
-		currentPlayer: myPlayers[1],
+		CurrentDealer: myPlayers[0],
+		CurrentPlayer: myPlayers[1],
 		evenTeamScore: 0,
 		oddTeamScore:  0,
-		userInterface: coord,
-		messages:      gen,
+		UserInterface: coord,
+		Messages:      gen,
+		trump:         undefined,
 	}
 
 	return myGameState

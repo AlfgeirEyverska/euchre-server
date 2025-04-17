@@ -22,9 +22,9 @@ type orderedSuit struct {
 	GoingAlone bool   `json:"goingAlone"`
 }
 
-type jsonAPI struct{}
+type JsonAPI struct{}
 
-func (api jsonAPI) InvalidCard() string {
+func (api JsonAPI) InvalidCard() string {
 	message := map[string]string{"Error": "Invalid Card!"}
 	messageJSON, err := json.Marshal(message)
 	if err != nil {
@@ -33,25 +33,36 @@ func (api jsonAPI) InvalidCard() string {
 	return string(messageJSON)
 }
 
-func (api jsonAPI) InvalidInput() string {
-	message := map[string]string{"Error": "##############\nInvalid input.\n##############"}
+func (api JsonAPI) InvalidInput() string {
+	message := map[string]string{"Error": "Invalid input."}
 	messageJSON, err := json.Marshal(message)
+
 	if err != nil {
 		log.Fatalln("JSON Marshalling error: ", err)
 	}
 	return string(messageJSON)
 }
 
-func (api jsonAPI) PlayCard(playerID int, trump suit, flip card, hand deck) string {
-
+func (api JsonAPI) PlayCard(playerID int, trump suit, flip card, hand deck) string {
 	message := "It is your turn. What would you like to play?"
 	newHand := []string{}
 	for i := range hand {
 		newHand = append(newHand, fmt.Sprint(hand[i]))
 	}
 
-	info := playerInfo{playerID, trump.String(), flip.String(), newHand, message}
-	messageJSON, err := json.Marshal(info)
+	pi := playerInfo{playerID, trump.String(), flip.String(), newHand, message}
+
+	validResponses := make(map[int]string)
+	for i, v := range hand {
+		validResponses[i+1] = v.String()
+	}
+
+	pc := map[string]struct {
+		Info     playerInfo     `json:"playerInfo"`
+		ValidRes map[int]string `json:"validResponses"`
+	}{"playCard": {pi, validResponses}}
+
+	messageJSON, err := json.Marshal(pc)
 	if err != nil {
 		log.Fatalln("JSON Marshalling error: ", err)
 	}
@@ -59,7 +70,7 @@ func (api jsonAPI) PlayCard(playerID int, trump suit, flip card, hand deck) stri
 	return string(messageJSON)
 }
 
-func (api jsonAPI) DealerDiscard(playerID int, trump suit, flip card, hand deck) string {
+func (api JsonAPI) DealerDiscard(playerID int, trump suit, flip card, hand deck) string {
 
 	message := "You must discard."
 	newHand := []string{}
@@ -67,8 +78,19 @@ func (api jsonAPI) DealerDiscard(playerID int, trump suit, flip card, hand deck)
 		newHand = append(newHand, fmt.Sprint(hand[i]))
 	}
 
-	info := playerInfo{playerID, trump.String(), flip.String(), newHand, message}
-	messageJSON, err := json.Marshal(info)
+	pi := playerInfo{playerID, trump.String(), flip.String(), newHand, message}
+
+	validResponses := make(map[int]string)
+	for i, v := range hand {
+		validResponses[i+1] = v.String()
+	}
+
+	dd := map[string]struct {
+		Info     playerInfo     `json:"playerInfo"`
+		ValidRes map[int]string `json:"validResponses"`
+	}{"dealerDiscard": {pi, validResponses}}
+
+	messageJSON, err := json.Marshal(dd)
 	if err != nil {
 		log.Fatalln("JSON Marshalling error: ", err)
 	}
@@ -76,49 +98,91 @@ func (api jsonAPI) DealerDiscard(playerID int, trump suit, flip card, hand deck)
 	return string(messageJSON)
 }
 
-func (api jsonAPI) PickUpOrPass(playerID int, trump suit, flip card, hand deck) string {
-	validResponses := map[string]string{"1": "Pass", "2": "Pick It Up", "3": "Pick It Up and Go It Alone"}
+func (api JsonAPI) PickUpOrPass(playerID int, trump suit, flip card, hand deck) string {
+	validResponses := map[int]string{1: "Pass", 2: "Pick It Up", 3: "Pick It Up and Go It Alone"}
 
-	message := fmt.Sprintln("Player ", playerID)
-	message += fmt.Sprintln(flip, " was flipped.")
-	message += fmt.Sprintln("Your cards are:\n", hand)
-	message += "Press | "
-	for i := 1; i <= 3; i++ {
-		istr := fmt.Sprint(i)
-		message += fmt.Sprint(i, " to ", validResponses[istr], " | ")
+	newHand := []string{}
+	for i := range hand {
+		newHand = append(newHand, fmt.Sprint(hand[i]))
 	}
-	return message
+
+	pi := playerInfo{
+		PlayerID: playerID,
+		Trump:    trump.String(),
+		Flip:     flip.String(),
+		Hand:     newHand,
+		Message:  "Tell the dealer to pick it up or pass.",
+	}
+
+	pop := map[string]struct {
+		Info     playerInfo     `json:"playerInfo"`
+		ValidRes map[int]string `json:"validResponses"`
+	}{"pickUpOrPass": {pi, validResponses}}
+
+	messageJSON, err := json.Marshal(pop)
+	if err != nil {
+		log.Fatalln("JSON Marshalling error: ", err)
+	}
+	return string(messageJSON)
+
 }
 
-func (api jsonAPI) OrderOrPass(playerID int, trump suit, flip card, hand deck) string {
+func (api JsonAPI) OrderOrPass(playerID int, trump suit, flip card, hand deck) string {
 	rs := flip.suit.remainingSuits()
-	validResponses := make(map[string]string)
-	responseSuits := make(map[string]suit)
-	validResponses["1"] = "Pass"
+	validResponses := make(map[int]string)
+	responseSuits := make(map[int]suit)
+	validResponses[1] = "Pass"
 	for i := 0; i < len(rs); i++ {
 		j := i + 2
-		validResponses[fmt.Sprint(j)] = fmt.Sprint(rs[i])
-		responseSuits[fmt.Sprint(j)] = rs[i]
+		validResponses[j] = fmt.Sprint(rs[i])
+		responseSuits[j] = rs[i]
 	}
 
-	message := fmt.Sprintln("\n\n\nPlayer ", playerID)
-	message += fmt.Sprintln(flip.suit, "s are out.")
-	message += fmt.Sprintln("Your cards are:\n", hand)
-	message += fmt.Sprint("Press: | ", 1, " to ", validResponses["1"], " | ")
-	for i := 2; i <= len(validResponses); i++ {
-		message += fmt.Sprint(i, " for ", validResponses[fmt.Sprint(i)], "s | ")
+	newHand := []string{}
+	for i := range hand {
+		newHand = append(newHand, fmt.Sprint(hand[i]))
 	}
-	return message
+
+	pi := playerInfo{
+		PlayerID: playerID,
+		Trump:    trump.String(),
+		Flip:     flip.String(),
+		Hand:     newHand,
+		Message:  fmt.Sprint(flip.suit, "s are out. Order a suit or pass."),
+	}
+
+	oop := map[string]struct {
+		Info     playerInfo     `json:"playerInfo"`
+		ValidRes map[int]string `json:"validResponses"`
+	}{"orderOrPass": {pi, validResponses}}
+
+	messageJSON, err := json.Marshal(oop)
+	if err != nil {
+		log.Fatalln("JSON Marshalling error: ", err)
+	}
+	return string(messageJSON)
 }
 
-func (api jsonAPI) GoItAlone(playerID int) string {
-	message := fmt.Sprintln("Player ", playerID)
-	message += fmt.Sprintln("Would you like to go it alone?")
-	message += fmt.Sprintln("Press: 1 for Yes. 2 for No")
-	return message
+func (api JsonAPI) GoItAlone(playerID int) string {
+	message := "Would you like to go it alone?"
+
+	validResponses := map[int]string{1: "Yes", 2: "No"}
+
+	gia := map[string]struct {
+		Message  string         `json:"message"`
+		ValidRes map[int]string `json:"validResponses"`
+	}{"goItAlone": {message, validResponses}}
+
+	messageJSON, err := json.Marshal(gia)
+	if err != nil {
+		log.Fatalln("JSON Marshalling error: ", err)
+	}
+
+	return string(messageJSON)
+
 }
 
-func (api jsonAPI) DealerMustOrder() string {
+func (api JsonAPI) DealerMustOrder() string {
 	message := map[string]string{"Error": "Dealer must choose a suit at this time."}
 	messageJSON, err := json.Marshal(message)
 	if err != nil {
@@ -127,12 +191,20 @@ func (api jsonAPI) DealerMustOrder() string {
 	return string(messageJSON)
 }
 
-func (api jsonAPI) PlayedSoFar(plays []play) string {
-
-	playsMap := map[string]string{}
-	for _, v := range plays {
-		playsMap[fmt.Sprint("Player ", v.cardPlayer.id)] = v.cardPlayed.String()
+func (api JsonAPI) PlayedSoFar(plays []play) string {
+	type playJSON struct {
+		PlayerID   int    `json:"playerID"`
+		CardPlayed string `json:"played"`
 	}
+	jsonPlays := []playJSON{}
+	for _, v := range plays {
+		currentPlay := playJSON{
+			PlayerID:   v.cardPlayer.ID,
+			CardPlayed: v.cardPlayed.String(),
+		}
+		jsonPlays = append(jsonPlays, currentPlay)
+	}
+	playsMap := map[string][]playJSON{"plays": jsonPlays}
 	messageJSON, err := json.Marshal(playsMap)
 	if err != nil {
 		log.Fatalln("JSON Marshalling error: ", err)
@@ -141,25 +213,28 @@ func (api jsonAPI) PlayedSoFar(plays []play) string {
 	return string(messageJSON)
 }
 
-func (api jsonAPI) TricksSoFar(evenScore int, oddScore int) string {
-	scores := struct {
+func (api JsonAPI) TricksSoFar(evenScore int, oddScore int) string {
+	message := map[string]struct {
 		EvenTrickScore int `json:"evenTrickScore"`
 		OddTrickScore  int `json:"oddTrickScore"`
-	}{evenScore, oddScore}
-	messageJSON, err := json.Marshal(scores)
+	}{"trickScore": {evenScore, oddScore}}
+
+	messageJSON, err := json.Marshal(message)
 	if err != nil {
 		log.Fatalln("JSON Marshalling error: ", err)
 	}
 	return string(messageJSON)
 }
 
-func (api jsonAPI) DealerUpdate(playerID int) string {
-	message := struct {
+func (api JsonAPI) DealerUpdate(playerID int) string {
+	message := map[string]struct {
 		Message string `json:"message"`
 		Dealer  int    `json:"dealer"`
 	}{
-		Message: fmt.Sprint("Player ", playerID, " is dealing."),
-		Dealer:  playerID,
+		"dealerUpdate": {
+			Message: fmt.Sprint("Player ", playerID, " is dealing."),
+			Dealer:  playerID,
+		},
 	}
 	messageJSON, err := json.Marshal(message)
 	if err != nil {
@@ -168,9 +243,9 @@ func (api jsonAPI) DealerUpdate(playerID int) string {
 	return string(messageJSON)
 }
 
-func (api jsonAPI) PlayerOrderedSuit(playerID int, trump suit) string {
+func (api JsonAPI) PlayerOrderedSuit(playerID int, trump suit) string {
 	messageStr := orderedSuit{
-		Message:    fmt.Sprint("Player ", playerID, " is dealing."),
+		Message:    fmt.Sprint("Player ", playerID, " Ordered ", trump, "s"),
 		PlayerID:   playerID,
 		Action:     "Ordered Suit",
 		Trump:      trump.String(),
@@ -182,9 +257,9 @@ func (api jsonAPI) PlayerOrderedSuit(playerID int, trump suit) string {
 	return string(messageJSON)
 }
 
-func (api jsonAPI) PlayerOrderedSuitAndGoingAlone(playerID int, trump suit) string {
+func (api JsonAPI) PlayerOrderedSuitAndGoingAlone(playerID int, trump suit) string {
 	messageStr := orderedSuit{
-		Message:    fmt.Sprint("Player ", playerID, " is dealing."),
+		Message:    fmt.Sprint("Player ", playerID, " Ordered ", trump, "s and is going it alone."),
 		PlayerID:   playerID,
 		Action:     "Ordered Suit",
 		Trump:      trump.String(),
