@@ -2,18 +2,6 @@ package euchre
 
 import "fmt"
 
-type messageGenerator interface {
-	InvalidCard() string
-	InvalidInput() string
-	PlayCard(playerID int, trump suit, hand deck) string
-	DealerDiscard(playerID int, flip card, hand deck) string
-	PickUpOrPass(playerID int, flip card, hand deck) string
-	OrderOrPass(playerID int, flip card, hand deck) string
-	GoItAlone(playerID int) string
-	DealerMustOrder() string
-	PlayedSoFar(plays []play) string
-	TricksSoFar(evenScore int, oddScore int) string
-}
 type textAPI struct{}
 
 func (api textAPI) InvalidCard() string {
@@ -24,10 +12,10 @@ func (api textAPI) InvalidInput() string {
 	return "##############\nInvalid input.\n##############"
 }
 
-func (api textAPI) PlayCard(playerID int, trump suit, hand deck) string {
+func (api textAPI) PlayCard(playerID int, trump suit, flip card, hand deck) string {
 	message := fmt.Sprintln("\n\n\nPlayer ", playerID)
 	message += fmt.Sprintln(trump, "s are trump")
-	message += fmt.Sprintln("Your cards are:\n", hand, "\nWhat would you like to play?")
+	message += fmt.Sprintln("Your playable cards are:\n", hand, "\nWhat would you like to play?")
 
 	message += "Press | "
 	for i, v := range hand {
@@ -37,7 +25,7 @@ func (api textAPI) PlayCard(playerID int, trump suit, hand deck) string {
 	return message
 }
 
-func (api textAPI) DealerDiscard(playerID int, flip card, hand deck) string {
+func (api textAPI) DealerDiscard(playerID int, trump suit, flip card, hand deck) string {
 	message := fmt.Sprintln("\n\n\nPlayer ", playerID)
 	message += fmt.Sprintln("You are picking up ", flip)
 	message += fmt.Sprintln("Your cards are:\n", hand)
@@ -49,7 +37,7 @@ func (api textAPI) DealerDiscard(playerID int, flip card, hand deck) string {
 	return message
 }
 
-func (api textAPI) PickUpOrPass(playerID int, flip card, hand deck) string {
+func (api textAPI) PickUpOrPass(playerID int, trump suit, flip card, hand deck) string {
 	validResponses := map[string]string{"1": "Pass", "2": "Pick It Up", "3": "Pick It Up and Go It Alone"}
 
 	message := fmt.Sprintln("Player ", playerID)
@@ -63,7 +51,7 @@ func (api textAPI) PickUpOrPass(playerID int, flip card, hand deck) string {
 	return message
 }
 
-func (api textAPI) OrderOrPass(playerID int, flip card, hand deck) string {
+func (api textAPI) OrderOrPass(playerID int, trump suit, flip card, hand deck) string {
 	rs := flip.suit.remainingSuits()
 	validResponses := make(map[string]string)
 	responseSuits := make(map[string]suit)
@@ -101,4 +89,16 @@ func (api textAPI) PlayedSoFar(plays []play) string {
 
 func (api textAPI) TricksSoFar(evenScore int, oddScore int) string {
 	return fmt.Sprintln("Even Trick Score ", evenScore, " | Odd Trick Score", oddScore)
+}
+
+func (api textAPI) DealerUpdate(playerID int) string {
+	return fmt.Sprint("##############\n\n Player ", playerID, " is dealing.\n\n##############")
+}
+
+func (api textAPI) PlayerOrderedSuit(playerID int, trump suit) string {
+	return fmt.Sprint("Player ", playerID, " Ordered ", trump, "s")
+}
+
+func (api textAPI) PlayerOrderedSuitAndGoingAlone(playerID int, trump suit) string {
+	return fmt.Sprint("Player ", playerID, " ordered ", trump, "s and is going it alone")
 }

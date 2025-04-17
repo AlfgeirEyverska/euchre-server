@@ -8,5 +8,5 @@ type card struct {
 }
 
 func (c card) String() string {
-	return fmt.Sprint(c.denomination, c.suit) //  + " of "
+	return fmt.Sprintf("%s%s", c.denomination, c.suit) //  + " of "
 }

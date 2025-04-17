@@ -11,14 +11,16 @@ const (
 	diamonds
 	clubs
 	spades
+	undefined
 )
 
 func (s suit) String() string {
 	var suits = map[suit]string{
-		hearts:   "♥",
-		diamonds: "♦",
-		clubs:    "♣",
-		spades:   "♠",
+		hearts:    "♥",
+		diamonds:  "♦",
+		clubs:     "♣",
+		spades:    "♠",
+		undefined: "Not Chosen",
 	}
 	return fmt.Sprint(suits[s])
 }

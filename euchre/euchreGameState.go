@@ -9,6 +9,28 @@ import (
 
 const targetScore = 10
 
+type coordinator interface {
+	AskPlayerForX(int, string) string
+	MessagePlayer(int, string)
+	Broadcast(string)
+}
+
+type messageGenerator interface {
+	InvalidCard() string
+	InvalidInput() string
+	PlayCard(int, suit, card, deck) string
+	DealerDiscard(int, suit, card, deck) string
+	PickUpOrPass(int, suit, card, deck) string
+	OrderOrPass(int, suit, card, deck) string
+	GoItAlone(int) string
+	DealerMustOrder() string
+	PlayedSoFar([]play) string
+	TricksSoFar(int, int) string
+	DealerUpdate(int) string
+	PlayerOrderedSuit(int, suit) string
+	PlayerOrderedSuitAndGoingAlone(int, suit) string
+}
+
 type euchreGameState struct {
 	gameDeck      deck
 	players       []*player
@@ -22,7 +44,7 @@ type euchreGameState struct {
 	evenTeamScore int
 	oddTeamScore  int
 	userInterface coordinator
-	generator     messageGenerator
+	messages      messageGenerator
 }
 
 func (gs euchreGameState) String() string {
@@ -69,7 +91,7 @@ func (gs *euchreGameState) dealerDiscard() {
 	hand := gs.currentDealer.hand
 
 	// fix here
-	message := gs.generator.DealerDiscard(gs.currentDealer.id, gs.flip, gs.currentDealer.hand)
+	message := gs.messages.DealerDiscard(gs.currentDealer.id, gs.trump, gs.flip, gs.currentDealer.hand)
 
 	var validResponses []string
 	for i := range hand {
@@ -91,7 +113,7 @@ func (gs *euchreGameState) dealerDiscard() {
 			gs.discard.replace(gs.flip, discarded)
 			break
 		} else {
-			gs.userInterface.MessagePlayer(gs.currentDealer.id, gs.generator.InvalidInput())
+			gs.userInterface.MessagePlayer(gs.currentDealer.id, gs.messages.InvalidInput())
 		}
 	}
 }
@@ -241,7 +263,7 @@ func (gs *euchreGameState) offerTheFlippedCard() (pickedUp bool) {
 
 		validResponses := map[string]string{"1": "Pass", "2": "Pick It Up", "3": "Pick It Up and Go It Alone"}
 
-		message := gs.generator.PickUpOrPass(gs.currentPlayer.id, gs.flip, gs.currentPlayer.hand)
+		message := gs.messages.PickUpOrPass(gs.currentPlayer.id, gs.trump, gs.flip, gs.currentPlayer.hand)
 		var response string
 		for {
 			response = gs.userInterface.AskPlayerForX(gs.currentPlayer.id, message)
@@ -250,9 +272,6 @@ func (gs *euchreGameState) offerTheFlippedCard() (pickedUp bool) {
 			if !ok {
 				gs.userInterface.MessagePlayer(gs.currentPlayer.id, "##############\nInvalid input.\n##############")
 			} else {
-				// TODO: could get the correct message (Json or text from interface here)
-				message = fmt.Sprintln("Player ", gs.currentPlayer.id, " chose ", validResponses[response])
-				gs.userInterface.Broadcast(message)
 				break
 			}
 		}
@@ -264,11 +283,15 @@ func (gs *euchreGameState) offerTheFlippedCard() (pickedUp bool) {
 		case "2":
 			gs.playerOrderedSuit(*gs.currentPlayer, gs.flip.suit)
 			pickedUp = true
+			message = gs.messages.PlayerOrderedSuit(gs.currentPlayer.id, gs.trump)
+			gs.userInterface.Broadcast(message)
 			return
 		case "3":
 			gs.playerOrderedSuit(*gs.currentPlayer, gs.flip.suit)
 			pickedUp = true
 			gs.goingItAlone = true
+			message = gs.messages.PlayerOrderedSuitAndGoingAlone(gs.currentPlayer.id, gs.trump)
+			gs.userInterface.Broadcast(message)
 			return
 		default:
 			log.Fatal("Player sent invalid response and it was accepted. This should never happen!!")
@@ -293,7 +316,7 @@ func (gs *euchreGameState) askPlayerToOrderOrPass() (pass bool) {
 		responseSuits[fmt.Sprint(j)] = rs[i]
 	}
 
-	message := gs.generator.OrderOrPass(gs.currentPlayer.id, gs.flip, gs.currentPlayer.hand)
+	message := gs.messages.OrderOrPass(gs.currentPlayer.id, gs.trump, gs.flip, gs.currentPlayer.hand)
 
 	var response string
 	for {
@@ -301,7 +324,7 @@ func (gs *euchreGameState) askPlayerToOrderOrPass() (pass bool) {
 
 		_, ok := validResponses[response]
 		if !ok {
-			gs.userInterface.MessagePlayer(gs.currentPlayer.id, gs.generator.InvalidInput())
+			gs.userInterface.MessagePlayer(gs.currentPlayer.id, gs.messages.InvalidInput())
 		} else {
 			if response != "1" {
 				gs.playerOrderedSuit(*gs.currentPlayer, responseSuits[response])
@@ -317,15 +340,24 @@ func (gs *euchreGameState) askPlayerToOrderOrPass() (pass bool) {
 	} else {
 		pass = false
 
-		message := gs.generator.GoItAlone(gs.currentPlayer.id)
+		message := gs.messages.GoItAlone(gs.currentPlayer.id)
 		for {
 
 			aloneResponse = gs.userInterface.AskPlayerForX(gs.currentPlayer.id, message)
 
 			if aloneResponse != "1" && aloneResponse != "2" {
-				gs.userInterface.MessagePlayer(gs.currentPlayer.id, gs.generator.InvalidInput())
+				gs.userInterface.MessagePlayer(gs.currentPlayer.id, gs.messages.InvalidInput())
 			} else {
 				gs.goingItAlone = aloneResponse == "1"
+
+				if gs.goingItAlone {
+					message = gs.messages.PlayerOrderedSuitAndGoingAlone(gs.currentPlayer.id, responseSuits[response])
+					gs.userInterface.Broadcast(message)
+				} else {
+					message = gs.messages.PlayerOrderedSuit(gs.currentPlayer.id, responseSuits[response])
+					gs.userInterface.Broadcast(message)
+				}
+
 				return
 			}
 		}
@@ -339,7 +371,7 @@ func (gs *euchreGameState) establishTrump() {
 		if gs.currentPlayer.id == gs.currentDealer.id {
 			pass = gs.askPlayerToOrderOrPass()
 			if pass {
-				gs.userInterface.MessagePlayer(gs.currentDealer.id, gs.generator.DealerMustOrder())
+				gs.userInterface.MessagePlayer(gs.currentDealer.id, gs.messages.DealerMustOrder())
 			} else {
 				return
 			}
@@ -426,16 +458,22 @@ func (gs euchreGameState) validPlay(p play, cardLead card) bool {
 		suitLead = gs.trump
 	}
 
-	if suitLead == lb.suit && cardLead != lb {
-		var handCopy []card
-		for _, v := range p.cardPlayer.hand {
-			handCopy = append(handCopy, v)
-		}
-		handCopyDeck := deck(handCopy)
-		handCopyDeck.remove(lb)
+	// Left Bower's original suit was ordered
+	if suitLead == lb.suit { //&& cardLead != lb //Can't be the lb because suitLead would have been changed
+
+		// If player followed suit without the left bower
 		if p.cardPlayed.suit == suitLead && p.cardPlayed.denomination != jack {
 			return true
 		} else {
+			// Player either did not follow suit or tried to play the left bower
+			var handCopy []card
+			for _, v := range p.cardPlayer.hand {
+				handCopy = append(handCopy, v)
+			}
+			handCopyDeck := deck(handCopy)
+			// Remove the Left Bower as an option when checking for a card of the Left Bower's suit
+			handCopyDeck.remove(lb)
+
 			if handCopyDeck.hasA(suitLead) {
 				log.Println("Player must follow suit")
 				return false
@@ -447,6 +485,10 @@ func (gs euchreGameState) validPlay(p play, cardLead card) bool {
 		if p.cardPlayed.suit == suitLead {
 			return true
 		} else {
+			// Allow the player to follow trump with lb
+			if suitLead == gs.trump && p.cardPlayed == lb {
+				return true
+			}
 			if p.cardPlayer.hand.hasA(suitLead) {
 				log.Println("Player must follow suit")
 				return false
@@ -457,17 +499,34 @@ func (gs euchreGameState) validPlay(p play, cardLead card) bool {
 	}
 }
 
+func (gs euchreGameState) validPlays(firstPlayer bool, cardLead card) []card {
+
+	if firstPlayer {
+		return gs.currentPlayer.hand
+	} else {
+		vps := []card{}
+		for _, v := range gs.currentPlayer.hand {
+			if gs.validPlay(play{gs.currentPlayer, v}, cardLead) {
+				vps = append(vps, v)
+			}
+		}
+		return vps
+	}
+}
+
 // TODO: add to some api interface for text or json
-func (gs *euchreGameState) askPlayerToPlayCard() play {
+func (gs *euchreGameState) askPlayerToPlayCard(firstPlayer bool, cardLead card) play {
 
 	validResponses := make(map[string]card)
 
-	for i, v := range gs.currentPlayer.hand {
+	playableCards := gs.validPlays(firstPlayer, cardLead)
+
+	for i, v := range playableCards {
 		prettyIdx := fmt.Sprint(i + 1)
 		validResponses[prettyIdx] = v
 	}
 
-	message := gs.generator.PlayCard(gs.currentPlayer.id, gs.trump, gs.currentPlayer.hand)
+	message := gs.messages.PlayCard(gs.currentPlayer.id, gs.trump, gs.flip, playableCards)
 	var response string
 
 	for {
@@ -487,7 +546,7 @@ func (gs *euchreGameState) playTrick() play {
 	var plays []play
 
 	// First player can't play invalid card
-	currentPlay := gs.askPlayerToPlayCard()
+	currentPlay := gs.askPlayerToPlayCard(true, card{})
 	plays = append(plays, currentPlay)
 	gs.currentPlayer.hand.remove(currentPlay.cardPlayed)
 	cardLead = currentPlay.cardPlayed
@@ -496,10 +555,10 @@ func (gs *euchreGameState) playTrick() play {
 	for playerN := 1; playerN < numPlayers; playerN++ {
 		// Get valid card from player
 		for {
-			message := gs.generator.PlayedSoFar(plays)
+			message := gs.messages.PlayedSoFar(plays)
 			gs.userInterface.Broadcast(message)
 
-			currentPlay := gs.askPlayerToPlayCard()
+			currentPlay := gs.askPlayerToPlayCard(false, cardLead)
 			if gs.validPlay(currentPlay, cardLead) {
 				plays = append(plays, currentPlay)
 				gs.currentPlayer.hand.remove(currentPlay.cardPlayed)
@@ -508,7 +567,7 @@ func (gs *euchreGameState) playTrick() play {
 				break
 			}
 			log.Println("Player ", gs.currentPlayer.id, " played invalid card.")
-			gs.userInterface.MessagePlayer(gs.currentPlayer.id, gs.generator.InvalidCard())
+			gs.userInterface.MessagePlayer(gs.currentPlayer.id, gs.messages.InvalidCard())
 		}
 	}
 	// check winning card
@@ -538,7 +597,7 @@ func (gs *euchreGameState) play5Tricks() {
 			oddScore++
 		}
 
-		message := gs.generator.TricksSoFar(evenScore, oddScore)
+		message := gs.messages.TricksSoFar(evenScore, oddScore)
 		gs.userInterface.Broadcast(message)
 		log.Println("Even Trick Score ", evenScore, " | Odd Trick Score", oddScore)
 
@@ -570,7 +629,7 @@ func NewEuchreGameState(coord coordinator, gen messageGenerator) euchreGameState
 		evenTeamScore: 0,
 		oddTeamScore:  0,
 		userInterface: coord,
-		generator:     gen,
+		messages:      gen,
 	}
 
 	return myGameState

@@ -2,12 +2,6 @@ package euchre
 
 import "fmt"
 
-type coordinator interface {
-	AskPlayerForX(int, string) string
-	MessagePlayer(int, string)
-	Broadcast(string)
-}
-
 type debugCLI struct{}
 
 func (cli debugCLI) AskPlayerForX(playerID int, message string) string {
