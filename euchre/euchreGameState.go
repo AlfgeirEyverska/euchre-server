@@ -39,6 +39,7 @@ type euchreGameState struct {
 	discard       deck
 	flip          card
 	trump         suit
+	leftBower     card
 	CurrentDealer *player
 	CurrentPlayer *player
 	whoOrdered    *player
@@ -193,6 +194,7 @@ func (gs *euchreGameState) oddTeamScored(n int) {
 func (gs *euchreGameState) playerOrderedSuit(p player, s suit) {
 	gs.whoOrdered = &p
 	gs.trump = s
+	gs.leftBower = gs.getLeftBower()
 }
 
 func (gs euchreGameState) GameOver() bool {
@@ -253,15 +255,12 @@ func (gs *euchreGameState) Deal() {
 	log.Println(gs.players)
 }
 
-// TODO: add to some api interface for text or json
 func (gs *euchreGameState) OfferTheFlippedCard() (pickedUp bool) {
 	/*
 		buries the flipped card and returns false or
 		sets trump, goingitalone, and whoOrdered and returns true
 	*/
 	for i := 0; i < numPlayers; i++ {
-
-		// fmt.Println("\nSquiggle squiggle squiggle\n ")
 
 		validResponses := map[string]string{"1": "Pass", "2": "Pick It Up", "3": "Pick It Up and Go It Alone"}
 
@@ -396,54 +395,53 @@ func (gs *euchreGameState) EstablishTrump() {
 }
 
 func (gs euchreGameState) cardRank(c card, suitLead suit) int {
+	// Changed to be hard-coded for efficiency
+	rightBower := card{jack, gs.trump}
 
-	var rightBower card
-	var leftBower card
-	switch gs.trump {
-	case hearts:
-		rightBower = card{jack, hearts}
-		leftBower = card{jack, diamonds}
-	case diamonds:
-		rightBower = card{jack, diamonds}
-		leftBower = card{jack, hearts}
-	case clubs:
-		rightBower = card{jack, clubs}
-		leftBower = card{jack, spades}
-	case spades:
-		rightBower = card{jack, spades}
-		leftBower = card{jack, clubs}
+	if c == rightBower {
+		return 20
+	}
+	if c == gs.leftBower {
+		return 19
 	}
 
-	var partialDeck deck
+	eff := c.effectiveSuit(gs.trump, gs.leftBower)
 
-	if suitLead != gs.trump {
-		for denomk := denomination(0); denomk < numDenominations; denomk++ {
-			partialDeck = append(partialDeck, card{denomination: denomk, suit: suitLead})
-		}
-		if suitLead == leftBower.suit {
-			partialDeck.remove(leftBower)
+	if eff == gs.trump {
+		switch c.denomination {
+		case ace:
+			return 18
+		case king:
+			return 17
+		case queen:
+			return 16
+		case ten:
+			return 15
+		case nine:
+			return 14
 		}
 	}
 
-	for denomk := denomination(0); denomk < numDenominations; denomk++ {
-		partialDeck = append(partialDeck, card{denomination: denomk, suit: gs.trump})
-	}
-	partialDeck.remove(rightBower)
-
-	partialDeck = append(partialDeck, leftBower)
-	partialDeck = append(partialDeck, rightBower)
-	log.Println(partialDeck)
-
-	for i, v := range partialDeck {
-		if c == v {
-			return i + 1
+	if eff == suitLead {
+		switch c.denomination {
+		case ace:
+			return 13
+		case king:
+			return 12
+		case queen:
+			return 11
+		case jack:
+			return 10
+		case ten:
+			return 9
+		case nine:
+			return 8
 		}
 	}
-
 	return 0
 }
 
-func (gs euchreGameState) leftBower() card {
+func (gs euchreGameState) getLeftBower() card {
 	var leftBower card
 	switch gs.trump {
 	case hearts:
@@ -459,53 +457,16 @@ func (gs euchreGameState) leftBower() card {
 }
 
 func (gs euchreGameState) validPlay(p play, cardLead card) bool {
-	// follow suit if you have to
-	// ignore left bower
-	// ignore following left bower suit
-	lb := gs.leftBower()
-	suitLead := cardLead.suit
-	if cardLead == lb {
-		suitLead = gs.trump
-	}
 
-	// Left Bower's original suit was ordered
-	if suitLead == lb.suit { //&& cardLead != lb //Can't be the lb because suitLead would have been changed
+	suitLead := cardLead.effectiveSuit(gs.trump, gs.leftBower)
+	cardSuit := p.cardPlayed.effectiveSuit(gs.trump, gs.leftBower)
 
-		// If player followed suit without the left bower
-		if p.cardPlayed.suit == suitLead && p.cardPlayed.denomination != jack {
-			return true
-		} else {
-			// Player either did not follow suit or tried to play the left bower
-			var handCopy []card
-			for _, v := range p.cardPlayer.hand {
-				handCopy = append(handCopy, v)
-			}
-			handCopyDeck := deck(handCopy)
-			// Remove the Left Bower as an option when checking for a card of the Left Bower's suit
-			handCopyDeck.remove(lb)
-
-			if handCopyDeck.hasA(suitLead) {
-				log.Println("Player must follow suit")
-				return false
-			} else {
-				return true
-			}
-		}
+	if cardSuit == suitLead {
+		return true
+	} else if p.cardPlayer.hand.hasA(suitLead, gs.trump, gs.leftBower) {
+		return false
 	} else {
-		if p.cardPlayed.suit == suitLead {
-			return true
-		} else {
-			// Allow the player to follow trump with lb
-			if suitLead == gs.trump && p.cardPlayed == lb {
-				return true
-			}
-			if p.cardPlayer.hand.hasA(suitLead) {
-				log.Println("Player must follow suit")
-				return false
-			} else {
-				return true
-			}
-		}
+		return true
 	}
 }
 
@@ -524,7 +485,6 @@ func (gs euchreGameState) validPlays(firstPlayer bool, cardLead card) []card {
 	}
 }
 
-// TODO: add to some api interface for text or json
 func (gs *euchreGameState) askPlayerToPlayCard(firstPlayer bool, cardLead card) play {
 
 	validResponses := make(map[string]card)

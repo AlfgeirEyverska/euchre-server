@@ -24,15 +24,7 @@ func main() {
 
 	gameServer := server.NewGameServer(listener)
 
-	// for i := 0; i < 4; i++ {
-	// 	gameServer.AskPlayerForName(i)
-	// }
 	fmt.Println("Well now what?")
-
-	// for {
-	// 	gameServer.Broadcast("Waiting...")
-	// 	time.Sleep(2 * time.Second)
-	// }
 
 	gameState := euchre.NewEuchreGameState(gameServer, euchre.JsonAPI{})
 
@@ -59,4 +51,5 @@ func main() {
 		// Update score
 		gameState.NextDealer()
 	}
+	fmt.Println("Game Over!")
 }

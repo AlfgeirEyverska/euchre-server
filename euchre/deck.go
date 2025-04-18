@@ -9,18 +9,16 @@ const deckSize = 24
 type deck []card
 
 func newDeck() deck {
-	d := make([]card, deckSize)
-	counter := 0
+	var d deck
 	for denomk := denomination(0); denomk < numDenominations; denomk++ {
 		for suitk := suit(0); suitk < numSuits; suitk++ {
-			d[counter] = card{denomination: denomk, suit: suitk}
-			counter++
+			d = append(d, card{denomk, suitk})
 		}
 	}
 	return d
 }
 
-func (d deck) shuffle() {
+func (d deck) shuffleOld() {
 	for i := 0; i < 400; i++ {
 		a := rand.Intn(deckSize)
 		b := rand.Intn(deckSize)
@@ -31,24 +29,35 @@ func (d deck) shuffle() {
 	}
 }
 
+func (d deck) shuffle() {
+	/*
+		Fisher-Yates shuffle.
+		Linear time and uniform distribution.
+	*/
+	n := len(d)
+	for i := n - 1; i > 0; i-- {
+		j := rand.Intn(i + 1)
+		d[i], d[j] = d[j], d[i]
+	}
+}
+
 func (d *deck) remove(c card) {
-	cards := (*d)[:]
-	for i := range cards {
-		if cards[i] == c {
-			(*d) = append(cards[:i], cards[i+1:]...)
-			break
+	for i, v := range *d {
+		if v == c {
+			*d = append((*d)[:i], (*d)[i+1:]...)
+			return
 		}
 	}
 }
 
 func (d *deck) replace(removed card, added card) {
 	d.remove(removed)
-	(*d) = append((*d), added)
+	*d = append((*d), added)
 }
 
-func (d deck) hasA(s suit) bool {
+func (d deck) hasA(s suit, trump suit, leftBower card) bool {
 	for _, v := range d {
-		if v.suit == s {
+		if v.effectiveSuit(trump, leftBower) == s {
 			return true
 		}
 	}
