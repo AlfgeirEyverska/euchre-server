@@ -1,20 +1,23 @@
 package main
 
 import (
-	"bots/randomBot"
+	bots "bots/common"
 	"fmt"
+	"log"
 )
 
 func main() {
 	fmt.Println("hello, world!")
-	doneChans := []chan bool{}
+	doneChans := []chan struct{}{}
 	for i := 0; i < 4; i++ {
-		doneChans = append(doneChans, make(chan bool))
-		go randomBot.Play()
+		doneChan := make(chan struct{})
+		doneChans = append(doneChans, doneChan)
+		go bots.Play(doneChan)
 	}
 
 	for i := 0; i < 4; i++ {
 		<-doneChans[i]
 	}
+	log.Println("Game Over!!")
 
 }

@@ -106,3 +106,7 @@ func (api TextAPI) PlayerOrderedSuit(playerID int, trump suit) string {
 func (api TextAPI) PlayerOrderedSuitAndGoingAlone(playerID int, trump suit) string {
 	return fmt.Sprint("Player ", playerID, " ordered ", trump, "s and is going it alone")
 }
+
+func (api TextAPI) GameOver(winner string) string {
+	return fmt.Sprint("Game Over! ", winner, " Team Won!")
+}

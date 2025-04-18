@@ -51,5 +51,6 @@ func main() {
 		// Update score
 		gameState.NextDealer()
 	}
-	fmt.Println("Game Over!")
+
+	log.Println("Game Over!")
 }

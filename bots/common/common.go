@@ -1,18 +1,10 @@
-package randomBot
+package common
 
 import (
-	"bufio"
 	"encoding/json"
 	"log"
 	"net"
-	"os"
 )
-
-// import "math/rand"
-
-// func choosePlay() {
-// 	a := rand.Intn(deckSize)
-// }
 
 var id int
 
@@ -165,8 +157,17 @@ func handlePlayerID(buf []byte) {
 	id = p["PlayerID"]
 }
 
-func giveName(conn net.Conn) {
-	playerIDMsg := map[string]string{"Name": "Random Bot"}
+func handleGameOver(buf json.RawMessage) {
+	var message map[string]string
+	err := json.Unmarshal(buf, &message)
+	if err != nil {
+		log.Fatalln(err)
+	}
+	log.Println(message)
+}
+
+func giveName(conn net.Conn, name string) {
+	playerIDMsg := map[string]string{"Name": name}
 	message, _ := json.Marshal(playerIDMsg)
 	_, err := conn.Write([]byte(message))
 	if err != nil {
@@ -174,107 +175,9 @@ func giveName(conn net.Conn) {
 	}
 }
 
-func firstKey(m map[string]json.RawMessage) string {
+func FirstKey(m map[string]json.RawMessage) string {
 	for k, _ := range m {
 		return k
 	}
 	return ""
-}
-
-func Play() {
-	logFile, err := os.OpenFile("euchreBot.log", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer logFile.Close()
-	log.SetOutput(logFile)
-	log.SetFlags(log.LstdFlags | log.Lshortfile)
-
-	conn, err := net.Dial("tcp", "localhost:8080")
-	if err != nil {
-		log.Fatalln(err)
-	}
-	defer conn.Close()
-
-	reader := bufio.NewReader(conn)
-
-	// giveName(conn)
-
-	for {
-		buf, err := reader.ReadBytes('\n')
-		// buf := make([]byte, 1024)
-		// n, err := conn.Read(buf)
-		if err != nil {
-			log.Fatalln(err)
-		}
-
-		var data map[string]json.RawMessage
-		err = json.Unmarshal(buf, &data)
-		if err != nil {
-			log.Println("Original Unmarshal Failure: ", string(buf))
-			log.Fatalln(err)
-		}
-
-		messageType := firstKey(data)
-		log.Println("First Key: ", messageType)
-		log.Println("Raw JSON: ", string(data[messageType]))
-
-		switch messageType {
-		case "pickUpOrPass":
-			handlePickUpOrPass(data[messageType])
-			_, err = conn.Write([]byte("1\n"))
-			if err != nil {
-				log.Fatalln(err)
-			}
-		case "orderOrPass":
-			handleOrderOrPass(data[messageType])
-			_, err = conn.Write([]byte("2\n"))
-			if err != nil {
-				log.Fatalln(err)
-			}
-		case "dealerDiscard":
-			handleDealerDiscard(data[messageType])
-			_, err = conn.Write([]byte("1\n"))
-			if err != nil {
-				log.Fatalln(err)
-			}
-		case "playCard":
-			handlePlayCard(data[messageType])
-			_, err = conn.Write([]byte("1\n"))
-			if err != nil {
-				log.Fatalln(err)
-			}
-		case "goItAlone":
-			handleGoItAlone(data[messageType])
-			_, err = conn.Write([]byte("2\n"))
-			if err != nil {
-				log.Fatalln(err)
-			}
-		case "PlayerID":
-			handlePlayerID(buf)
-		case "dealerUpdate":
-			handleDealerUpdate(buf)
-		case "suitOrdered":
-			handleSuitOrdered(data[messageType])
-		case "plays":
-			handlePlays(data[messageType])
-		case "trickScore":
-			handleTrickScore(data[messageType])
-		case "updateScore":
-			handleUpdateScore(data[messageType])
-		case "error":
-			handleError(data[messageType])
-		default:
-			log.Println("Unknown : ", messageType)
-			log.Fatalln("Unsupported message type.")
-		}
-
-	}
-
-	// 	_, err = conn.Write([]byte("Random Bot"))
-	// 	if err != nil {
-	// 		log.Fatalln(err)
-	// 	}
-	// }
-
 }

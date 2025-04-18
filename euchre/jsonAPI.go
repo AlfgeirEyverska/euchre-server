@@ -222,3 +222,12 @@ func (api JsonAPI) PlayerOrderedSuitAndGoingAlone(playerID int, trump suit) stri
 			GoingAlone: true}}
 	return marshalOrPanic(message)
 }
+
+func (api JsonAPI) GameOver(winner string) string {
+	msg := fmt.Sprint("Game Over! ", winner, " Team Won!")
+	message := map[string]struct {
+		Winner  string
+		Message string
+	}{"gameOver": {winner, msg}}
+	return marshalOrPanic(message)
+}
