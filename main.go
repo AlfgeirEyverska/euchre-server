@@ -1,30 +1,33 @@
 package main
 
 import (
-	"euchre/bots/randomBot"
 	"euchre/euchre"
 	"euchre/server"
 	"fmt"
 	"log"
+	"os"
 )
 
 func main() {
+
+	logFile, err := os.OpenFile("euchre.log", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer logFile.Close()
+	log.SetOutput(logFile)
+	log.SetFlags(log.LstdFlags | log.Lshortfile)
 
 	// euchre.PlayEuchre()
 
 	listener := server.NewGameListener()
 
-	for i := 0; i < 4; i++ {
-		go randomBot.Play()
-	}
-
 	gameServer := server.NewGameServer(listener)
 
-	for i := 0; i < 4; i++ {
-		gameServer.AskPlayerForName(i)
-	}
+	// for i := 0; i < 4; i++ {
+	// 	gameServer.AskPlayerForName(i)
+	// }
 	fmt.Println("Well now what?")
-	gameServer.Broadcast("You're probably wondering why I have brought you here...")
 
 	// for {
 	// 	gameServer.Broadcast("Waiting...")

@@ -91,6 +91,10 @@ func (api TextAPI) TricksSoFar(evenScore int, oddScore int) string {
 	return fmt.Sprintln("Even Trick Score ", evenScore, " | Odd Trick Score", oddScore)
 }
 
+func (api TextAPI) UpdateScore(evenScore int, oddScore int) string {
+	return fmt.Sprintln("Even team score: ", evenScore, "\n", "Odd team score: ", oddScore)
+}
+
 func (api TextAPI) DealerUpdate(playerID int) string {
 	return fmt.Sprint("##############\n\n Player ", playerID, " is dealing.\n\n##############")
 }

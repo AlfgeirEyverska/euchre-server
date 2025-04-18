@@ -7,6 +7,8 @@ import (
 	"net"
 )
 
+// TODO: Handle client disconnect case
+
 type playerConnection struct {
 	id            int
 	conn          net.Conn
@@ -78,7 +80,7 @@ func NewGameServer(ln net.Listener) server {
 			fmt.Println(err)
 			continue
 		}
-		player := playerConnection{playerID, conn, make(chan string, 2), make(chan string, 2), make(chan string, 2)}
+		player := playerConnection{playerID, conn, make(chan string), make(chan string), make(chan string)}
 		playerConnections = append(playerConnections, &player)
 		// Handle the connection in a new goroutine
 		go handleConnection(player)

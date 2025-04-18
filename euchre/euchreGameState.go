@@ -5,6 +5,7 @@ import (
 	"log"
 	"slices"
 	"strconv"
+	"strings"
 )
 
 const targetScore = 10
@@ -26,6 +27,7 @@ type messageGenerator interface {
 	DealerMustOrder() string
 	PlayedSoFar([]play) string
 	TricksSoFar(int, int) string
+	UpdateScore(int, int) string
 	DealerUpdate(int) string
 	PlayerOrderedSuit(int, suit) string
 	PlayerOrderedSuitAndGoingAlone(int, suit) string
@@ -87,11 +89,10 @@ func (gs *euchreGameState) setFirstPlayer(p player) {
 }
 
 func (gs *euchreGameState) DealerDiscard() {
-	// var response int
+
 	hand := gs.CurrentDealer.hand
 
-	// fix here
-	message := gs.Messages.DealerDiscard(gs.CurrentDealer.ID, gs.trump, gs.flip, gs.CurrentDealer.hand)
+	message := gs.Messages.DealerDiscard(gs.CurrentDealer.ID, gs.trump, gs.flip, hand)
 
 	var validResponses []string
 	for i := range hand {
@@ -101,6 +102,7 @@ func (gs *euchreGameState) DealerDiscard() {
 	for {
 
 		response := gs.UserInterface.AskPlayerForX(gs.CurrentDealer.ID, message)
+		response = strings.TrimSpace(response)
 
 		log.Println("Dealer answered ", response)
 
@@ -267,6 +269,9 @@ func (gs *euchreGameState) OfferTheFlippedCard() (pickedUp bool) {
 		var response string
 		for {
 			response = gs.UserInterface.AskPlayerForX(gs.CurrentPlayer.ID, message)
+			response = strings.TrimSpace(response)
+
+			log.Println("FlippedCardResponse ", response)
 
 			_, ok := validResponses[response]
 			if !ok {
@@ -321,6 +326,7 @@ func (gs *euchreGameState) askPlayerToOrderOrPass() (pass bool) {
 	var response string
 	for {
 		response = gs.UserInterface.AskPlayerForX(gs.CurrentPlayer.ID, message)
+		response = strings.TrimSpace(response)
 
 		_, ok := validResponses[response]
 		if !ok {
@@ -332,6 +338,7 @@ func (gs *euchreGameState) askPlayerToOrderOrPass() (pass bool) {
 			break
 		}
 	}
+	log.Println("OrderOrPass ", response)
 
 	var aloneResponse string
 	if response == "1" {
@@ -344,6 +351,9 @@ func (gs *euchreGameState) askPlayerToOrderOrPass() (pass bool) {
 		for {
 
 			aloneResponse = gs.UserInterface.AskPlayerForX(gs.CurrentPlayer.ID, message)
+			aloneResponse = strings.TrimSpace(aloneResponse)
+
+			log.Println("AloneResponse ", aloneResponse)
 
 			if aloneResponse != "1" && aloneResponse != "2" {
 				gs.UserInterface.MessagePlayer(gs.CurrentPlayer.ID, gs.Messages.InvalidInput())
@@ -351,10 +361,10 @@ func (gs *euchreGameState) askPlayerToOrderOrPass() (pass bool) {
 				gs.goingItAlone = aloneResponse == "1"
 
 				if gs.goingItAlone {
-					message = gs.Messages.PlayerOrderedSuitAndGoingAlone(gs.CurrentPlayer.ID, responseSuits[response])
+					message = gs.Messages.PlayerOrderedSuitAndGoingAlone(gs.CurrentPlayer.ID, responseSuits[aloneResponse])
 					gs.UserInterface.Broadcast(message)
 				} else {
-					message = gs.Messages.PlayerOrderedSuit(gs.CurrentPlayer.ID, responseSuits[response])
+					message = gs.Messages.PlayerOrderedSuit(gs.CurrentPlayer.ID, responseSuits[aloneResponse])
 					gs.UserInterface.Broadcast(message)
 				}
 
@@ -531,6 +541,9 @@ func (gs *euchreGameState) askPlayerToPlayCard(firstPlayer bool, cardLead card) 
 
 	for {
 		response = gs.UserInterface.AskPlayerForX(gs.CurrentPlayer.ID, message)
+		response = strings.TrimSpace(response)
+
+		log.Println("PlayCard ", response)
 
 		value, ok := validResponses[response]
 		if !ok {
@@ -547,6 +560,7 @@ func (gs *euchreGameState) playTrick() play {
 
 	// First player can't play invalid card
 	currentPlay := gs.askPlayerToPlayCard(true, card{})
+	log.Println(currentPlay)
 	plays = append(plays, currentPlay)
 	gs.CurrentPlayer.hand.remove(currentPlay.cardPlayed)
 	cardLead = currentPlay.cardPlayed
@@ -607,7 +621,8 @@ func (gs *euchreGameState) Play5Tricks() {
 
 	gs.awardPoints(evenScore, oddScore)
 
-	message := fmt.Sprintln("Even team score: ", gs.evenTeamScore, "\n", "Odd team score: ", gs.oddTeamScore)
+	// TODO: add to API as proper text / JSON representation
+	message := gs.Messages.UpdateScore(gs.evenTeamScore, gs.oddTeamScore)
 	gs.UserInterface.Broadcast(message)
 
 }

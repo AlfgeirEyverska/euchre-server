@@ -14,18 +14,18 @@ type playerInfo struct {
 	Message  string   `json:"message"`
 }
 
-type orderedSuit struct {
-	Message    string `json:"message"`
+type suitOrdered struct {
 	PlayerID   int    `json:"playerID"`
-	Action     string `json:"action"`
 	Trump      string `json:"trump"`
+	Action     string `json:"action"`
 	GoingAlone bool   `json:"goingAlone"`
+	Message    string `json:"message"`
 }
 
 type JsonAPI struct{}
 
 func (api JsonAPI) InvalidCard() string {
-	message := map[string]string{"Error": "Invalid Card!"}
+	message := map[string]string{"error": "Invalid Card!"}
 	messageJSON, err := json.Marshal(message)
 	if err != nil {
 		log.Fatalln("JSON Marshalling error: ", err)
@@ -34,7 +34,7 @@ func (api JsonAPI) InvalidCard() string {
 }
 
 func (api JsonAPI) InvalidInput() string {
-	message := map[string]string{"Error": "Invalid input."}
+	message := map[string]string{"error": "Invalid input."}
 	messageJSON, err := json.Marshal(message)
 
 	if err != nil {
@@ -183,7 +183,7 @@ func (api JsonAPI) GoItAlone(playerID int) string {
 }
 
 func (api JsonAPI) DealerMustOrder() string {
-	message := map[string]string{"Error": "Dealer must choose a suit at this time."}
+	message := map[string]string{"error": "Dealer must choose a suit at this time."}
 	messageJSON, err := json.Marshal(message)
 	if err != nil {
 		log.Fatalln("JSON Marshalling error: ", err)
@@ -226,6 +226,19 @@ func (api JsonAPI) TricksSoFar(evenScore int, oddScore int) string {
 	return string(messageJSON)
 }
 
+func (api JsonAPI) UpdateScore(evenScore int, oddScore int) string {
+	message := map[string]struct {
+		EvenScore int `json:"evenScore"`
+		OddScore  int `json:"oddScore"`
+	}{"trickScore": {evenScore, oddScore}}
+
+	messageJSON, err := json.Marshal(message)
+	if err != nil {
+		log.Fatalln("JSON Marshalling error: ", err)
+	}
+	return string(messageJSON)
+}
+
 func (api JsonAPI) DealerUpdate(playerID int) string {
 	message := map[string]struct {
 		Message string `json:"message"`
@@ -244,13 +257,14 @@ func (api JsonAPI) DealerUpdate(playerID int) string {
 }
 
 func (api JsonAPI) PlayerOrderedSuit(playerID int, trump suit) string {
-	messageStr := orderedSuit{
-		Message:    fmt.Sprint("Player ", playerID, " Ordered ", trump, "s"),
-		PlayerID:   playerID,
-		Action:     "Ordered Suit",
-		Trump:      trump.String(),
-		GoingAlone: false}
-	messageJSON, err := json.Marshal(messageStr)
+	message := map[string]suitOrdered{
+		"suitOrdered": {
+			Message:    fmt.Sprint("Player ", playerID, " Ordered ", trump, "s"),
+			PlayerID:   playerID,
+			Action:     "Ordered Suit",
+			Trump:      trump.String(),
+			GoingAlone: false}}
+	messageJSON, err := json.Marshal(message)
 	if err != nil {
 		log.Fatalln("JSON Marshalling error: ", err)
 	}
@@ -258,13 +272,14 @@ func (api JsonAPI) PlayerOrderedSuit(playerID int, trump suit) string {
 }
 
 func (api JsonAPI) PlayerOrderedSuitAndGoingAlone(playerID int, trump suit) string {
-	messageStr := orderedSuit{
-		Message:    fmt.Sprint("Player ", playerID, " Ordered ", trump, "s and is going it alone."),
-		PlayerID:   playerID,
-		Action:     "Ordered Suit",
-		Trump:      trump.String(),
-		GoingAlone: true}
-	messageJSON, err := json.Marshal(messageStr)
+	message := map[string]suitOrdered{
+		"suitOrdered": {
+			Message:    fmt.Sprint("Player ", playerID, " Ordered ", trump, "s"),
+			PlayerID:   playerID,
+			Action:     "Ordered Suit",
+			Trump:      trump.String(),
+			GoingAlone: true}}
+	messageJSON, err := json.Marshal(message)
 	if err != nil {
 		log.Fatalln("JSON Marshalling error: ", err)
 	}
