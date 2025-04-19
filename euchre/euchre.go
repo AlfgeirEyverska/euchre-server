@@ -6,8 +6,8 @@ import (
 
 func PlayEuchre() {
 
-	// gameState := NewEuchreGameState(debugCLI{}, textAPI{})
-	gameState := NewEuchreGameState(debugCLI{}, JsonAPI{})
+	gameState := NewEuchreGameState(debugCLI{}, TextAPI{})
+	// gameState := NewEuchreGameState(debugCLI{}, JsonAPI{})
 
 	log.Println("established game state")
 	log.Println("game over: ", gameState.GameOver())
@@ -15,7 +15,7 @@ func PlayEuchre() {
 	for !gameState.GameOver() {
 
 		message := gameState.Messages.DealerUpdate(gameState.CurrentDealer.ID)
-		gameState.UserInterface.Broadcast(message)
+		gameState.UI.Broadcast(message)
 
 		gameState.Deal()
 

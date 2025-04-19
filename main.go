@@ -26,12 +26,12 @@ func main() {
 
 	fmt.Println("Well now what?")
 
-	gameState := euchre.NewEuchreGameState(gameServer, euchre.JsonAPI{})
+	gameState := euchre.NewEuchreGameState(gameServer, euchre.TextAPI{})
 
 	for !gameState.GameOver() {
 
 		message := gameState.Messages.DealerUpdate(gameState.CurrentDealer.ID)
-		gameState.UserInterface.Broadcast(message)
+		gameState.UI.Broadcast(message)
 
 		gameState.Deal()
 

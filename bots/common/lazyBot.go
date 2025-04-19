@@ -8,7 +8,7 @@ import (
 	"os"
 )
 
-func Play(doneChan chan struct{}) {
+func LazyBot(doneChan chan struct{}) {
 	logFile, err := os.OpenFile("euchreBot.log", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
 	if err != nil {
 		log.Fatal(err)
