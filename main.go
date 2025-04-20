@@ -100,18 +100,15 @@ func main() {
 				time.Sleep(5 * time.Second)
 				continue
 			}
-			numConcurrentGames++
 			fmt.Println("NumConcurrentGames", numConcurrentGames)
 			log.Println("Num Active Games: ", numConcurrentGames)
+			numConcurrentGames++
 			mu.Unlock()
 			playerConns := <-lobbyChan
 
-			// ---- Create server and game state ----
 			s := server.NewGameServerFromConns(playerConns)
 			gameState := euchre.NewEuchreGameState(s, euchre.JsonAPI{})
 			log.Printf("Starting game loop")
-
-			// ---- Run game ----
 
 			doneChan := make(chan struct{})
 			doneChans = append(doneChans, doneChan)
