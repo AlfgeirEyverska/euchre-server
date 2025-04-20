@@ -83,13 +83,14 @@ func handleError(buf json.RawMessage) {
 	log.Println(message)
 }
 
-func handlePlayCard(buf json.RawMessage) {
+func handlePlayCard(buf json.RawMessage) messageInfo {
 	message := messageInfo{}
 	err := json.Unmarshal(buf, &message)
 	if err != nil {
 		log.Fatalln(err)
 	}
 	log.Println(message.ValidRes)
+	return message
 }
 
 func handleSuitOrdered(buf json.RawMessage) {
@@ -110,22 +111,24 @@ func handlePlays(buf json.RawMessage) {
 	log.Println(message)
 }
 
-func handleDealerDiscard(buf json.RawMessage) {
-	message := map[string]messageInfo{}
+func handleDealerDiscard(buf json.RawMessage) messageInfo {
+	message := messageInfo{}
 	err := json.Unmarshal(buf, &message)
 	if err != nil {
 		log.Fatalln(err)
 	}
 	log.Println(message)
+	return message
 }
 
-func handleGoItAlone(buf json.RawMessage) {
+func handleGoItAlone(buf json.RawMessage) goItAlone {
 	message := goItAlone{}
 	err := json.Unmarshal(buf, &message)
 	if err != nil {
 		log.Fatalln(err)
 	}
 	log.Println(message)
+	return message
 }
 
 func handleTrickScore(buf json.RawMessage) {
@@ -147,7 +150,6 @@ func handleUpdateScore(buf json.RawMessage) {
 }
 
 func handlePlayerID(buf []byte) {
-
 	log.Print(string(buf))
 	p := map[string]int{}
 	if err := json.Unmarshal(buf, &p); err != nil {
