@@ -7,7 +7,7 @@ type player struct {
 	hand deck
 }
 
-const numPlayers = 4
+const NumPlayers = 4
 
 func (p player) String() string {
 	return fmt.Sprint("Player ", p.ID, " | Cards: ", p.hand)

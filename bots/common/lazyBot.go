@@ -5,17 +5,9 @@ import (
 	"encoding/json"
 	"log"
 	"net"
-	"os"
 )
 
 func LazyBot(doneChan chan struct{}) {
-	logFile, err := os.OpenFile("euchreBot.log", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer logFile.Close()
-	log.SetOutput(logFile)
-	log.SetFlags(log.LstdFlags | log.Lshortfile)
 
 	conn, err := net.Dial("tcp", "localhost:8080")
 	if err != nil {

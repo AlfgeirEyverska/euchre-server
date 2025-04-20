@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"log"
 	"strings"
-	"time"
 )
 
 const targetScore = 10
@@ -43,7 +42,7 @@ type euchreGameState struct {
 	CurrentDealer *player
 	CurrentPlayer *player
 	whoOrdered    *player
-	goingItAlone  bool //TODO: double check player exclusion
+	goingItAlone  bool
 	evenTeamScore int
 	oddTeamScore  int
 	UI            userInterface
@@ -53,8 +52,8 @@ type euchreGameState struct {
 func NewEuchreGameState(coord userInterface, gen messageGenerator) euchreGameState {
 	myDeck := newDeck()
 
-	myPlayers := make([]*player, numPlayers)
-	for i := 0; i < numPlayers; i++ {
+	myPlayers := make([]*player, NumPlayers)
+	for i := 0; i < NumPlayers; i++ {
 		mp := player{ID: i}
 		myPlayers[i] = &mp
 	}
@@ -118,7 +117,7 @@ func (gs *euchreGameState) Deal() {
 		log.Println(hands[hand])
 	}
 
-	for i := 0; i < numPlayers; i++ {
+	for i := 0; i < NumPlayers; i++ {
 		gs.CurrentPlayer.setHand(hands[i])
 		gs.nextPlayer()
 	}
@@ -128,11 +127,11 @@ func (gs *euchreGameState) Deal() {
 	log.Println(gs.players)
 }
 
-// (gs *euchreGameState) OfferTheFlippedCard buries the flipped card and returns false or
+// OfferTheFlippedCard buries the flipped card and returns false or
 // sets trump, goingitalone, and whoOrdered and returns true
 func (gs *euchreGameState) OfferTheFlippedCard() (pickedUp bool) {
 
-	for i := 0; i < numPlayers; i++ {
+	for i := 0; i < NumPlayers; i++ {
 
 		validResponses := map[string]any{"1": "Pass", "2": "Pick It Up", "3": "Pick It Up and Go It Alone"}
 
@@ -185,7 +184,7 @@ func (gs *euchreGameState) DealerDiscard() {
 	gs.discard.replace(gs.flip, discarded)
 }
 
-// (gs *euchreGameState) EstablishTrump Ensures that someone orders trump.
+// EstablishTrump Ensures that someone orders trump.
 func (gs *euchreGameState) EstablishTrump() {
 	for {
 		pass := gs.askPlayerToOrderOrPass()
@@ -200,11 +199,10 @@ func (gs *euchreGameState) EstablishTrump() {
 	}
 }
 
+// askPlayerToOrderOrPass passes and returns true or
+// sets trump, goingitalone, and whoOrdered and returns false
 func (gs *euchreGameState) askPlayerToOrderOrPass() (pass bool) {
-	/*
-		passes and returns true or
-		sets trump, goingitalone, and whoOrdered and returns false
-	*/
+
 	rs := gs.flip.suit.remainingSuits()
 	validResponses := make(map[string]any)
 	responseSuits := make(map[string]suit)
@@ -259,14 +257,13 @@ func (gs *euchreGameState) askPlayerToPlayCard(firstPlayer bool, cardLead card) 
 	message := gs.Messages.PlayCard(gs.CurrentPlayer.ID, gs.trump, gs.flip, playableCards)
 	response := gs.getValidResponse(gs.CurrentPlayer.ID, message, validResponses)
 
-	// Already validated
 	value := validResponses[response]
 	valueCard, ok := value.(card)
 	if !ok {
 		log.Fatalln("Unable to get valid card cast out of validResponses map")
 	}
 	// REMOVE
-	time.Sleep(1 * time.Second)
+	// time.Sleep(500 * time.Millisecond)
 	return play{gs.CurrentPlayer, valueCard}
 }
 
@@ -325,7 +322,7 @@ func (gs *euchreGameState) playTrick() play {
 	cardLead = currentPlay.cardPlayed
 	gs.nextPlayer()
 
-	currentNumPlayers := numPlayers
+	currentNumPlayers := NumPlayers
 	if gs.goingItAlone {
 		currentNumPlayers--
 	}
@@ -363,7 +360,7 @@ func (gs *euchreGameState) playTrick() play {
 }
 
 func nextPlayerID(p player) int {
-	return (p.ID + 1) % numPlayers
+	return (p.ID + 1) % NumPlayers
 }
 
 // TODO: debug player progression after go it alone and after dealer change.
@@ -380,7 +377,7 @@ func (gs *euchreGameState) nextPlayer() {
 	if gs.goingItAlone {
 
 		lonePlayerID := gs.whoOrdered.ID
-		lonePlayerPartner := (lonePlayerID + 2) % numPlayers
+		lonePlayerPartner := (lonePlayerID + 2) % NumPlayers
 		log.Println("Lone Player ", lonePlayerID, " Partner ", lonePlayerPartner)
 
 		if gs.CurrentPlayer.ID == lonePlayerPartner {
@@ -540,6 +537,8 @@ func (gs euchreGameState) getLeftBower() card {
 	return leftBower
 }
 
+// validPlay takes information about the proposed card to play and the card played first in the trick and
+// returns true if the card can be played at this time or false if it can not
 func (gs euchreGameState) validPlay(p play, cardLead card) bool {
 
 	suitLead := cardLead.effectiveSuit(gs.trump, gs.leftBower)
@@ -554,6 +553,7 @@ func (gs euchreGameState) validPlay(p play, cardLead card) bool {
 	}
 }
 
+// validPlays uses validPlay to create and return a slice of the cards in the current player's hand that are valid to play at the time
 func (gs euchreGameState) validPlays(firstPlayer bool, cardLead card) []card {
 
 	if firstPlayer {
@@ -569,10 +569,9 @@ func (gs euchreGameState) validPlays(firstPlayer bool, cardLead card) []card {
 	}
 }
 
+// getValidResponse is an infinite loop will not return until player gives a valid response
+// The response string that is returned will always be a valid key of the validResponses map that is passed in
 func (gs euchreGameState) getValidResponse(playerID int, message string, validResponses map[string]any) string {
-	/*
-		Infinite loop will not return until player gives a valid response
-	*/
 	for {
 		response := gs.UI.AskPlayerForX(playerID, message)
 		response = strings.TrimSpace(response)

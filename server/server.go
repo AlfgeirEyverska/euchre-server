@@ -17,21 +17,23 @@ type playerConnection struct {
 	responseChan  chan string
 }
 
-type server struct {
+// name          string
+
+type Server struct {
 	connections []*playerConnection
 }
 
-func (s server) Broadcast(message string) {
+func (s Server) Broadcast(message string) {
 	for i := range s.connections {
 		s.connections[i].broadcastChan <- message + "\n"
 	}
 }
 
-func (s server) MessagePlayer(playerID int, message string) {
+func (s Server) MessagePlayer(playerID int, message string) {
 	s.connections[playerID].broadcastChan <- message + "\n"
 }
 
-func (s server) AskPlayerForX(player int, message string) string {
+func (s Server) AskPlayerForX(player int, message string) string {
 	s.connections[player].messageChan <- message + "\n"
 	x := <-s.connections[player].responseChan
 	return x
@@ -43,7 +45,7 @@ func greetPlayer(player playerConnection) {
 	player.broadcastChan <- string(message) + "\n"
 }
 
-func (s server) AskPlayerForName(playerID int) string {
+func (s Server) AskPlayerForName(playerID int) string {
 
 	playerName := s.AskPlayerForX(playerID, "What is your name?")
 
@@ -54,10 +56,10 @@ func (s server) AskPlayerForName(playerID int) string {
 
 	name, ok := response["Name"]
 	if !ok {
-		log.Fatalln("no name given")
+		log.Fatalln("No name given")
 	}
 
-	message := fmt.Sprint("Hello, ", name)
+	message := fmt.Sprintln("Hello, ", name)
 	s.MessagePlayer(playerID, message)
 	return playerName
 }
@@ -68,28 +70,6 @@ func NewGameListener() net.Listener {
 		log.Fatalln(err)
 	}
 	return ln
-}
-
-func NewGameServer(ln net.Listener) server {
-
-	playerID := 0
-	var playerConnections []*playerConnection
-	for i := 0; i < 4; i++ {
-		conn, err := ln.Accept()
-		if err != nil {
-			fmt.Println(err)
-			continue
-		}
-		player := playerConnection{playerID, conn, make(chan string), make(chan string), make(chan string)}
-		playerConnections = append(playerConnections, &player)
-		// Handle the connection in a new goroutine
-		go handleConnection(player)
-		greetPlayer(player)
-		playerID++
-	}
-
-	return server{playerConnections}
-
 }
 
 func handleConnection(playerConn playerConnection) {
@@ -118,4 +98,20 @@ func handleConnection(playerConn playerConnection) {
 			playerConn.responseChan <- string(buf[:n])
 		}
 	}
+}
+
+func NewGameServerFromConns(conns []net.Conn) *Server {
+	playerConnections := make([]*playerConnection, len(conns))
+	for i, conn := range conns {
+		playerConnections[i] = &playerConnection{
+			id:            i,
+			conn:          conn,
+			broadcastChan: make(chan string),
+			messageChan:   make(chan string),
+			responseChan:  make(chan string),
+		}
+		go handleConnection(*playerConnections[i])
+		greetPlayer(*playerConnections[i])
+	}
+	return &Server{connections: playerConnections}
 }

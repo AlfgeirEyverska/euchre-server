@@ -4,13 +4,12 @@ import (
 	"log"
 )
 
-func PlayEuchre() {
+func PlayEuchre(gameState euchreGameState, done chan struct{}) {
 
-	gameState := NewEuchreGameState(debugCLI{}, TextAPI{})
+	// gameState := NewEuchreGameState(debugCLI{}, TextAPI{})
 	// gameState := NewEuchreGameState(debugCLI{}, JsonAPI{})
 
 	log.Println("established game state")
-	log.Println("game over: ", gameState.GameOver())
 
 	for !gameState.GameOver() {
 
@@ -27,14 +26,15 @@ func PlayEuchre() {
 			gameState.EstablishTrump()
 		}
 
-		// set first player to dealer + 1
 		gameState.ResetFirstPlayer()
 
-		// play 5 tricks, starting with the dealer+1 player
 		log.Println("Play 5 tricks!")
 		gameState.Play5Tricks()
 
-		// Update score
 		gameState.NextDealer()
 	}
+
+	log.Println("Game Over!")
+	close(done)
+
 }
