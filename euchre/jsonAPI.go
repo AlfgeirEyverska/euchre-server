@@ -145,7 +145,6 @@ func (api JsonAPI) GoItAlone(playerID int) string {
 	}{"goItAlone": {msg, validResponses}}
 
 	return marshalOrPanic(message)
-
 }
 
 func (api JsonAPI) DealerMustOrder() string {

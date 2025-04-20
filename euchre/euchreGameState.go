@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"strings"
+	"time"
 )
 
 const targetScore = 10
@@ -263,7 +264,7 @@ func (gs *euchreGameState) askPlayerToPlayCard(firstPlayer bool, cardLead card) 
 		log.Fatalln("Unable to get valid card cast out of validResponses map")
 	}
 	// REMOVE
-	// time.Sleep(500 * time.Millisecond)
+	time.Sleep(1000 * time.Millisecond)
 	return play{gs.CurrentPlayer, valueCard}
 }
 
@@ -575,6 +576,8 @@ func (gs euchreGameState) getValidResponse(playerID int, message string, validRe
 	for {
 		response := gs.UI.AskPlayerForX(playerID, message)
 		response = strings.TrimSpace(response)
+
+		log.Println("RESPONSE:  ", response)
 
 		_, ok := validResponses[response]
 		if !ok {
