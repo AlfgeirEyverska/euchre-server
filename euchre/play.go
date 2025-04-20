@@ -1,4 +1,4 @@
-package main
+package euchre
 
 import "fmt"
 
@@ -8,5 +8,5 @@ type play struct {
 }
 
 func (p play) String() string {
-	return fmt.Sprint("Player ", p.cardPlayer.id, " played ", p.cardPlayed)
+	return fmt.Sprint("Player ", p.cardPlayer.ID, " played ", p.cardPlayed)
 }
