@@ -4,7 +4,8 @@ import (
 	"log"
 )
 
-func PlayEuchre(gameState euchreGameState, done chan struct{}) {
+// func PlayEuchre(gameState euchreGameState, done chan struct{}) {
+func PlayEuchre(gameState euchreGameState) {
 
 	// gameState := NewEuchreGameState(debugCLI{}, TextAPI{})
 	// gameState := NewEuchreGameState(debugCLI{}, JsonAPI{})
@@ -33,8 +34,6 @@ func PlayEuchre(gameState euchreGameState, done chan struct{}) {
 
 		gameState.NextDealer()
 	}
-
 	log.Println("Game Over!")
-	close(done)
-
+	// close(done)
 }
