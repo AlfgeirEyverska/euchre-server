@@ -18,15 +18,16 @@ func main() {
 	// log.SetOutput(logFile)
 	log.SetFlags(log.LstdFlags | log.Lshortfile)
 
+	numPlayers := 6
 	fmt.Println("hello, world!")
 	doneChans := []chan struct{}{}
-	for i := 0; i < 4; i++ {
+	for i := 0; i < numPlayers; i++ {
 		doneChan := make(chan struct{})
 		doneChans = append(doneChans, doneChan)
 		go bots.RandomBot(doneChan)
 	}
 
-	for i := 0; i < 4; i++ {
+	for i := 0; i < numPlayers; i++ {
 		<-doneChans[i]
 	}
 	log.Println("Game Over!!")

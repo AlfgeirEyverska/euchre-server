@@ -1,39 +1,45 @@
 package euchre
 
 import (
+	"context"
 	"log"
 )
 
-// func PlayEuchre(gameState euchreGameState, done chan struct{}) {
-func PlayEuchre(gameState euchreGameState) {
-
-	// gameState := NewEuchreGameState(debugCLI{}, TextAPI{})
-	// gameState := NewEuchreGameState(debugCLI{}, JsonAPI{})
+func PlayEuchre(ctx context.Context, gameState euchreGameState) {
 
 	log.Println("established game state")
 
-	for !gameState.GameOver() {
+	for {
+		select {
+		case <-ctx.Done():
+			log.Println("Game context cancelled somewhere")
+			return
+		default:
+			if gameState.GameOver() {
+				log.Println("Game Over!")
+				return
+			}
 
-		message := gameState.Messages.DealerUpdate(gameState.CurrentDealer.ID)
-		gameState.UI.Broadcast(message)
+			message := gameState.Messages.DealerUpdate(gameState.CurrentDealer.ID)
+			gameState.UI.Broadcast(message)
 
-		gameState.Deal()
+			gameState.Deal()
 
-		pickedUp := gameState.OfferTheFlippedCard()
+			pickedUp := gameState.OfferTheFlippedCard()
 
-		if pickedUp {
-			gameState.DealerDiscard()
-		} else {
-			gameState.EstablishTrump()
+			if pickedUp {
+				gameState.DealerDiscard()
+			} else {
+				gameState.EstablishTrump()
+			}
+
+			gameState.ResetFirstPlayer()
+
+			log.Println("Play 5 tricks!")
+			gameState.Play5Tricks()
+
+			gameState.NextDealer()
+
 		}
-
-		gameState.ResetFirstPlayer()
-
-		log.Println("Play 5 tricks!")
-		gameState.Play5Tricks()
-
-		gameState.NextDealer()
 	}
-	log.Println("Game Over!")
-	// close(done)
 }

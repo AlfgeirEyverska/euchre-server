@@ -2,6 +2,7 @@ package common
 
 import (
 	"encoding/json"
+	"fmt"
 	"log"
 	"net"
 )
@@ -81,6 +82,15 @@ func handleError(buf json.RawMessage) {
 		log.Fatalln(err)
 	}
 	log.Println(message)
+}
+
+func handleConnectionCheck(writer net.Conn) {
+	message := fmt.Sprintf("Pong\n")
+	log.Println("Message: ", message)
+	_, err := writer.Write([]byte(message))
+	if err != nil {
+		log.Fatalln(err)
+	}
 }
 
 func handlePlayCard(buf json.RawMessage) messageInfo {

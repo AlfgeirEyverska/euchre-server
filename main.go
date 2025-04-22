@@ -24,6 +24,10 @@ func setUpLogger() *os.File {
 }
 
 func main() {
+	// maxG, present := os.LookupEnv("EUCHRE_MAX_GAMES")
+	// if !present {
+	// 	// use server max concurrent games
+	// }
 
 	logFile := setUpLogger()
 	defer logFile.Close()
@@ -50,7 +54,7 @@ func main() {
 
 	go server.AcceptConns(ctx, listener, connChan, &connTrackr)
 
-	go server.MakeLobbies(ctx, connChan, lobbyChan)
+	go server.MakeLobbies(ctx, connChan, lobbyChan, &connTrackr)
 
 	go server.StartGames(ctx, lobbyChan, &connTrackr)
 

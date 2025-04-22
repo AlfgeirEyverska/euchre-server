@@ -39,6 +39,8 @@ func LazyBot(doneChan chan struct{}) {
 		log.Println("Raw JSON: ", string(data[messageType]))
 
 		switch messageType {
+		case "connectionCheck":
+			handleConnectionCheck(conn)
 		case "pickUpOrPass":
 			handlePickUpOrPass(data[messageType])
 			_, err = conn.Write([]byte("1\n"))
