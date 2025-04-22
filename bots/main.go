@@ -18,7 +18,7 @@ func main() {
 	// log.SetOutput(logFile)
 	log.SetFlags(log.LstdFlags | log.Lshortfile)
 
-	numPlayers := 6
+	numPlayers := 4
 	fmt.Println("hello, world!")
 	doneChans := []chan struct{}{}
 	for i := 0; i < numPlayers; i++ {

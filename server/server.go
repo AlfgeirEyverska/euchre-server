@@ -55,7 +55,7 @@ func (s Server) AskPlayerForX(player int, message string) string {
 }
 
 func greetPlayer(player *playerConnection) {
-	playerIDMsg := map[string]int{"PlayerID": player.id}
+	playerIDMsg := euchre.Envelope{"PlayerID", player.id}
 	message, _ := json.Marshal(playerIDMsg)
 	player.broadcastChan <- string(message) + "\n"
 }
@@ -152,8 +152,10 @@ func NewGameServerFromConns(conns []net.Conn) *Server {
 
 func isAlive(conn net.Conn) bool {
 	fmt.Println("Checking for liveness ", conn)
-	message, _ := json.Marshal(map[string]string{"connectionCheck": "Ping"})
-	messageStr := fmt.Sprint(string(message), "\n")
+	message := euchre.Envelope{"connectionCheck", "Ping"}
+	res, _ := json.Marshal(message)
+	// message, _ := json.Marshal(map[string]string{"connectionCheck": "Ping"}) //fix
+	messageStr := fmt.Sprint(string(res), "\n")
 	// conn.SetReadDeadline(time.Now().Add(100 * time.Millisecond))
 
 	if _, err := conn.Write([]byte(messageStr)); err != nil {

@@ -9,6 +9,11 @@ import (
 
 var id int
 
+type Envelope struct {
+	Type string          `json:"type"`
+	Data json.RawMessage `json:"data"`
+}
+
 type playerInfo struct {
 	PlayerID int      `json:"playerID"`
 	Trump    string   `json:"trump"`
@@ -45,7 +50,7 @@ type messageInfo struct {
 	ValidRes map[int]string `json:"validResponses"`
 }
 
-func handleDealerUpdate(buf []byte) dealerUpdate {
+func handleDealerUpdate(buf json.RawMessage) dealerUpdate {
 	var message dealerUpdate
 	err := json.Unmarshal(buf, &message)
 	if err != nil {
@@ -159,14 +164,14 @@ func handleUpdateScore(buf json.RawMessage) {
 	log.Println(message)
 }
 
-func handlePlayerID(buf []byte) {
+func handlePlayerID(buf json.RawMessage) {
 	log.Print(string(buf))
-	p := map[string]int{}
+	var p int
 	if err := json.Unmarshal(buf, &p); err != nil {
 		log.Fatalln(err)
 	}
-	log.Print("I am player ", p["PlayerID"])
-	id = p["PlayerID"]
+	log.Print("I am player ", p)
+	id = p
 }
 
 func handleGameOver(buf json.RawMessage) {

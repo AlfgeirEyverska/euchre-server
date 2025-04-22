@@ -48,80 +48,54 @@ func RandomBot(doneChan chan struct{}) {
 			log.Fatalln(err)
 		}
 
-		var data map[string]json.RawMessage
-		err = json.Unmarshal(buf, &data)
+		var message Envelope
+		err = json.Unmarshal(buf, &message)
 		if err != nil {
 			log.Println("Original Unmarshal Failure: ", string(buf))
 			log.Fatalln(err)
 		}
 
-		messageType := FirstKey(data)
-		log.Println("First Key: ", messageType)
-		log.Println("Raw JSON: ", string(data[messageType]))
+		log.Println("First Key: ", message.Type)
+		log.Println("Raw JSON: ", message.Data)
 
-		switch messageType {
+		switch message.Type {
 		case "connectionCheck":
 			handleConnectionCheck(conn)
 		case "pickUpOrPass":
-			res := handlePickUpOrPass(data[messageType])
+			res := handlePickUpOrPass(message.Data)
 			sendRandomResponse(res.ValidRes, conn)
-			// _, err = conn.Write([]byte("1\n"))
-			// if err != nil {
-			// 	log.Fatalln(err)
-			// }
 		case "orderOrPass":
-			res := handleOrderOrPass(data[messageType])
+			res := handleOrderOrPass(message.Data)
 			sendRandomResponse(res.ValidRes, conn)
-
-			// _, err = conn.Write([]byte("2\n"))
-			// if err != nil {
-			// 	log.Fatalln(err)
-			// }
 		case "dealerDiscard":
-			res := handleDealerDiscard(data[messageType])
+			res := handleDealerDiscard(message.Data)
 			sendRandomResponse(res.ValidRes, conn)
-
-			// _, err = conn.Write([]byte("1\n"))
-			// if err != nil {
-			// 	log.Fatalln(err)
-			// }
 		case "playCard":
-			res := handlePlayCard(data[messageType])
+			res := handlePlayCard(message.Data)
 			sendRandomResponse(res.ValidRes, conn)
-
-			// _, err = conn.Write([]byte("1\n"))
-			// if err != nil {
-			// 	log.Fatalln(err)
-			// }
 		case "goItAlone":
-
-			res := handleGoItAlone(data[messageType])
+			res := handleGoItAlone(message.Data)
 			sendRandomResponse(res.ValidRes, conn)
-
-			// _, err = conn.Write([]byte("2\n"))
-			// if err != nil {
-			// 	log.Fatalln(err)
-			// }
 		case "PlayerID":
-			handlePlayerID(buf)
+			handlePlayerID(message.Data)
 		case "dealerUpdate":
-			handleDealerUpdate(buf)
+			handleDealerUpdate(message.Data)
 		case "suitOrdered":
-			handleSuitOrdered(data[messageType])
+			handleSuitOrdered(message.Data)
 		case "plays":
-			handlePlays(data[messageType])
+			handlePlays(message.Data)
 		case "trickScore":
-			handleTrickScore(data[messageType])
+			handleTrickScore(message.Data)
 		case "updateScore":
-			handleUpdateScore(data[messageType])
+			handleUpdateScore(message.Data)
 		case "error":
-			handleError(data[messageType])
+			handleError(message.Data)
 		case "gameOver":
-			handleGameOver(data[messageType])
+			handleGameOver(message.Data)
 			close(doneChan)
 			return
 		default:
-			log.Println("Unknown : ", messageType)
+			log.Println("Unknown : ", message.Type)
 			log.Fatalln("Unsupported message type.")
 		}
 
