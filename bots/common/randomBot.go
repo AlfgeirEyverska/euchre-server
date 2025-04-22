@@ -60,6 +60,8 @@ func RandomBot(doneChan chan struct{}) {
 		log.Println("Raw JSON: ", string(data[messageType]))
 
 		switch messageType {
+		case "connectionCheck":
+			handleConnectionCheck(conn)
 		case "pickUpOrPass":
 			res := handlePickUpOrPass(data[messageType])
 			sendRandomResponse(res.ValidRes, conn)
