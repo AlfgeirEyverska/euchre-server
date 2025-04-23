@@ -38,9 +38,6 @@ func RandomBot(doneChan chan struct{}) {
 	defer conn.Close()
 
 	reader := bufio.NewReader(conn)
-	// writer := bufio.NewWriter(conn)
-
-	// giveName(conn)
 
 	for {
 		buf, err := reader.ReadBytes('\n')
@@ -56,7 +53,7 @@ func RandomBot(doneChan chan struct{}) {
 		}
 
 		log.Println("First Key: ", message.Type)
-		log.Println("Raw JSON: ", message.Data)
+		log.Println("Raw JSON: ", string(message.Data))
 
 		switch message.Type {
 		case "connectionCheck":
@@ -98,13 +95,5 @@ func RandomBot(doneChan chan struct{}) {
 			log.Println("Unknown : ", message.Type)
 			log.Fatalln("Unsupported message type.")
 		}
-
 	}
-
-	// 	_, err = conn.Write([]byte("Random Bot"))
-	// 	if err != nil {
-	// 		log.Fatalln(err)
-	// 	}
-	// }
-
 }

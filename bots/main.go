@@ -24,7 +24,7 @@ func main() {
 	for i := 0; i < numPlayers; i++ {
 		doneChan := make(chan struct{})
 		doneChans = append(doneChans, doneChan)
-		go bots.RandomBot(doneChan)
+		go bots.LazyBot(doneChan)
 	}
 
 	for i := 0; i < numPlayers; i++ {
