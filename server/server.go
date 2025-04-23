@@ -11,7 +11,10 @@ import (
 	"time"
 )
 
-const MaxConcurrentGames = 3
+// Through trial and error (running 3 concurrent 1000 game trials)
+// I have determined that the network seems to be a bottleneck and
+// My laptop can only handle 2 concurrent games, continuously
+const MaxConcurrentGames = 2
 
 type playerConnection struct {
 	id            int
@@ -88,7 +91,7 @@ func NewGameListener() net.Listener {
 }
 
 func handleConnection(ctx context.Context, cancel context.CancelFunc, playerConn *playerConnection) {
-	// defer playerConn.conn.Close()
+	// playerConn closed by caller
 
 	buf := make([]byte, 1024)
 	for {
@@ -196,7 +199,6 @@ func AcceptConns(ctx context.Context, listener net.Listener, connChan chan net.C
 	}
 }
 
-// func StartGames(ctx context.Context, lobbyChan chan []net.Conn, ct *ConnTracker) {
 func StartGames(ctx context.Context, connChan chan net.Conn, ct *ConnTracker) {
 	var mu sync.Mutex
 	var numConcurrentGames int
@@ -235,19 +237,15 @@ func StartGames(ctx context.Context, connChan chan net.Conn, ct *ConnTracker) {
 			mu.Lock()
 			numConcurrentGames++
 			fmt.Println("NumConcurrentGames ", numConcurrentGames)
-			// fmt.Println("ConnTracker Connections:\n", ct.conns)
 			log.Println("New game starting. Active games:", numConcurrentGames)
 			mu.Unlock()
 
 			go func(pConns []net.Conn) {
 				defer func() {
-					// fmt.Println("\n\nTHIS IS THE CLEANUP CLOSURE")
 					mu.Lock()
 					numConcurrentGames--
 					fmt.Println("NumConcurrentGames ", numConcurrentGames)
-					// fmt.Println("ConnTracker Connections:\n", ct.conns)
 					mu.Unlock()
-					// ct.Prune()
 					for _, conn := range pConns {
 						conn.Close()
 						ct.done(conn)

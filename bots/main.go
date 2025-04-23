@@ -29,8 +29,9 @@ func main() {
 	)
 
 	doneChans := []chan int{}
+	game := 0
 gameLoop:
-	for game := 0; game < numGames; game++ {
+	for game < numGames {
 		fmt.Println("game: ", game)
 		// fmt.Println("Starting bots")
 		for i := 0; i < numPlayers; i++ {
@@ -66,6 +67,7 @@ gameLoop:
 			randomScore++
 		}
 		log.Println("Game Over!!")
+		game++
 	}
 
 	fmt.Printf("Lazy wins: %d\nRandom wins: %d\n", lazyScore, randomScore)

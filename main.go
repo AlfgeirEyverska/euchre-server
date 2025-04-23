@@ -50,22 +50,14 @@ func main() {
 	}()
 
 	connChan := make(chan net.Conn, server.MaxConcurrentGames*euchre.NumPlayers)
-	// lobbyChan := make(chan []net.Conn, server.MaxConcurrentGames)
 
 	go server.AcceptConns(ctx, listener, connChan, &connTrackr)
 
-	// go server.MakeLobbies(ctx, connChan, lobbyChan, &connTrackr)
-
-	// go server.StartGames(ctx, lobbyChan, &connTrackr)
 	go server.StartGames(ctx, connChan, &connTrackr)
 
 	<-ctx.Done()
 	fmt.Println("Intitiating shutdown. Waiting for games in progress to finish...")
-	// if numConcurrentGames == 0 {
-	// 	connTrackr.CloseAll()
-	// }
 	connTrackr.Prune()
 	connTrackr.Wait()
-	// connTrackr.CloseAll()
 	fmt.Println("Graceful shutdown complete.")
 }
