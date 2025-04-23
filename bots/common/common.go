@@ -91,7 +91,7 @@ func handleError(buf json.RawMessage) {
 
 func handleConnectionCheck(writer net.Conn) {
 	message := fmt.Sprintf("Pong\n")
-	log.Println("Message: ", message)
+	log.Println("Connection Check Message: ", message)
 	_, err := writer.Write([]byte(message))
 	if err != nil {
 		log.Fatalln(err)
@@ -174,13 +174,23 @@ func handlePlayerID(buf json.RawMessage) {
 	id = p
 }
 
-func handleGameOver(buf json.RawMessage) {
+func handleGameOver(buf json.RawMessage) int {
 	var message map[string]string
 	err := json.Unmarshal(buf, &message)
 	if err != nil {
 		log.Fatalln(err)
 	}
 	log.Println(message)
+	winner, ok := message["Winner"]
+	if !ok {
+		log.Fatalln("Could not determine winner")
+	}
+	if winner == "Even" {
+		// fmt.Println("I think even won")
+		return 0
+	}
+	// fmt.Println("I think odd won")
+	return 1
 }
 
 func giveName(conn net.Conn, name string) {
@@ -190,11 +200,4 @@ func giveName(conn net.Conn, name string) {
 	if err != nil {
 		log.Fatalln(err)
 	}
-}
-
-func FirstKey(m map[string]json.RawMessage) string {
-	for k, _ := range m {
-		return k
-	}
-	return ""
 }

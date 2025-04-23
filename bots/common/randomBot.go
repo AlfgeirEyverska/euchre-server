@@ -25,15 +25,19 @@ func sendRandomResponse(validResponses map[int]string, writer net.Conn) {
 	log.Println("Message: ", message)
 	_, err := writer.Write([]byte(message))
 	if err != nil {
-		log.Fatalln(err)
+		log.Println(err)
 	}
 }
 
-func RandomBot(doneChan chan struct{}) {
+func RandomBot(doneChan chan int) {
+
+	defer close(doneChan)
 
 	conn, err := net.Dial("tcp", "localhost:8080")
 	if err != nil {
-		log.Fatalln(err)
+		close(doneChan)
+		log.Println(err)
+		return
 	}
 	defer conn.Close()
 
@@ -42,14 +46,16 @@ func RandomBot(doneChan chan struct{}) {
 	for {
 		buf, err := reader.ReadBytes('\n')
 		if err != nil {
-			log.Fatalln(err)
+			log.Println(err)
+			return
 		}
 
 		var message Envelope
 		err = json.Unmarshal(buf, &message)
 		if err != nil {
 			log.Println("Original Unmarshal Failure: ", string(buf))
-			log.Fatalln(err)
+			log.Println(err)
+			return
 		}
 
 		log.Println("First Key: ", message.Type)
@@ -73,7 +79,7 @@ func RandomBot(doneChan chan struct{}) {
 		case "goItAlone":
 			res := handleGoItAlone(message.Data)
 			sendRandomResponse(res.ValidRes, conn)
-		case "PlayerID":
+		case "playerID":
 			handlePlayerID(message.Data)
 		case "dealerUpdate":
 			handleDealerUpdate(message.Data)
@@ -88,12 +94,12 @@ func RandomBot(doneChan chan struct{}) {
 		case "error":
 			handleError(message.Data)
 		case "gameOver":
-			handleGameOver(message.Data)
-			close(doneChan)
+			res := handleGameOver(message.Data)
+			doneChan <- res
 			return
 		default:
 			log.Println("Unknown : ", message.Type)
-			log.Fatalln("Unsupported message type.")
+			log.Println("Unsupported message type.")
 		}
 	}
 }

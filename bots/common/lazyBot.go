@@ -7,11 +7,15 @@ import (
 	"net"
 )
 
-func LazyBot(doneChan chan struct{}) {
+func LazyBot(doneChan chan int) {
+
+	defer close(doneChan)
 
 	conn, err := net.Dial("tcp", "localhost:8080")
 	if err != nil {
-		log.Fatalln(err)
+		close(doneChan)
+		log.Println(err)
+		return
 	}
 	defer conn.Close()
 
@@ -20,14 +24,15 @@ func LazyBot(doneChan chan struct{}) {
 	for {
 		buf, err := reader.ReadBytes('\n')
 		if err != nil {
-			log.Fatalln(err)
+			log.Println(err)
+			return
 		}
 
 		var message Envelope
 		err = json.Unmarshal(buf, &message)
 		if err != nil {
 			log.Println("Original Unmarshal Failure: ", string(buf))
-			log.Fatalln(err)
+			log.Println(err)
 		}
 
 		log.Println("First Key: ", message.Type)
@@ -40,33 +45,38 @@ func LazyBot(doneChan chan struct{}) {
 			handlePickUpOrPass(message.Data)
 			_, err = conn.Write([]byte("1\n"))
 			if err != nil {
-				log.Fatalln(err)
+				log.Println(err)
+				return
 			}
 		case "orderOrPass":
 			handleOrderOrPass(message.Data)
 			_, err = conn.Write([]byte("2\n"))
 			if err != nil {
-				log.Fatalln(err)
+				log.Println(err)
+				return
 			}
 		case "dealerDiscard":
 			handleDealerDiscard(message.Data)
 			_, err = conn.Write([]byte("1\n"))
 			if err != nil {
-				log.Fatalln(err)
+				log.Println(err)
+				return
 			}
 		case "playCard":
 			handlePlayCard(message.Data)
 			_, err = conn.Write([]byte("1\n"))
 			if err != nil {
-				log.Fatalln(err)
+				log.Println(err)
+				return
 			}
 		case "goItAlone":
 			handleGoItAlone(message.Data)
 			_, err = conn.Write([]byte("2\n"))
 			if err != nil {
-				log.Fatalln(err)
+				log.Println(err)
+				return
 			}
-		case "PlayerID":
+		case "playerID":
 			handlePlayerID(message.Data)
 		case "dealerUpdate":
 			handleDealerUpdate(message.Data)
@@ -81,12 +91,12 @@ func LazyBot(doneChan chan struct{}) {
 		case "error":
 			handleError(message.Data)
 		case "gameOver":
-			handleGameOver(message.Data)
-			close(doneChan)
+			res := handleGameOver(message.Data)
+			doneChan <- res
 			return
 		default:
 			log.Println("Unknown : ", message.Type)
-			log.Fatalln("Unsupported message type.")
+			log.Println("Unsupported message type.")
 		}
 	}
 }
