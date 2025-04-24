@@ -92,17 +92,11 @@ func NewGameListener() net.Listener {
 	return ln
 }
 
-// TODO: look into the server reliability issues that cause the Error Writing To Conn messages below
 func handleConnection(ctx context.Context, cancel context.CancelFunc, playerConn *playerConnection) {
-	// playerConn closed by caller
 	defer playerConn.conn.Close()
 
 	buf := make([]byte, 1024)
 	for {
-		// if !isAlive(playerConn.conn) {
-		// 	cancel()
-		// 	return
-		// }
 		playerConn.conn.SetReadDeadline(time.Now().Add(6 * time.Minute))
 		playerConn.conn.SetWriteDeadline(time.Now().Add(6 * time.Minute))
 		select {

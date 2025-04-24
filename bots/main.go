@@ -19,7 +19,7 @@ func main() {
 	log.SetFlags(log.LstdFlags | log.Lshortfile)
 
 	numPlayers := 4
-	numGames := 1000
+	numGames := 100
 
 	lazyScore := 0
 	randomScore := 0
