@@ -2,7 +2,9 @@ package euchre
 
 import (
 	"context"
+	"fmt"
 	"log"
+	"time"
 )
 
 func PlayEuchre(ctx context.Context, gameState euchreGameState) {
@@ -17,9 +19,11 @@ func PlayEuchre(ctx context.Context, gameState euchreGameState) {
 		default:
 			if gameState.GameOver() {
 				log.Println("Game Over!")
+				time.Sleep(20 * time.Millisecond)
 				return
 			}
 
+			fmt.Println("Sending dealer update message...")
 			message := gameState.Messages.DealerUpdate(gameState.CurrentDealer.ID)
 			gameState.UI.Broadcast(message)
 

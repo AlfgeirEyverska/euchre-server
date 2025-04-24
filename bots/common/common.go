@@ -201,3 +201,14 @@ func giveName(conn net.Conn, name string) {
 		log.Fatalln(err)
 	}
 }
+
+func sayHello(conn net.Conn) {
+	msg := map[string]string{"message": "hello"}
+	msgJson, _ := json.Marshal(msg)
+	env := Envelope{Type: "hello", Data: msgJson}
+	message, _ := json.Marshal(env)
+	_, err := conn.Write([]byte(message))
+	if err != nil {
+		log.Fatalln(err)
+	}
+}

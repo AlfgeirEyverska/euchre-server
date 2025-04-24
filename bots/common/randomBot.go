@@ -41,6 +41,8 @@ func RandomBot(doneChan chan int) {
 	}
 	defer conn.Close()
 
+	sayHello(conn)
+
 	reader := bufio.NewReader(conn)
 
 	for {

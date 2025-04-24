@@ -30,6 +30,7 @@ func main() {
 
 	doneChans := []chan int{}
 	game := 0
+	failedGames := 0
 gameLoop:
 	for game < numGames {
 		fmt.Println("game: ", game)
@@ -55,6 +56,7 @@ gameLoop:
 			winner, ok = <-doneChans[i]
 			if !ok {
 				fmt.Println("Player ", i, " failed to complete. Game Aborted.")
+				failedGames++
 				doneChans = nil
 				continue gameLoop
 			}
@@ -68,8 +70,12 @@ gameLoop:
 		}
 		log.Println("Game Over!!")
 		game++
+
+		// time.Sleep(1000 * time.Millisecond)
 	}
 
 	fmt.Printf("Lazy wins: %d\nRandom wins: %d\n", lazyScore, randomScore)
+	failureRate := 100.0 * (float64(failedGames) / float64(numGames))
+	fmt.Printf("Failed Games: %d, %.0f%%\n", failedGames, failureRate)
 
 }
