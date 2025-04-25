@@ -14,7 +14,8 @@ import (
 // Through trial and error (running 3 concurrent 1000 game trials)
 // I have determined that the network seems to be a bottleneck and
 // My laptop can only handle 2 concurrent games, continuously
-const MaxConcurrentGames = 2
+// 1 works the most efficiency and I get more throughput
+const MaxConcurrentGames = 1
 
 type playerConnection struct {
 	id            int
@@ -58,7 +59,6 @@ func (s Server) AskPlayerForX(player int, message string) string {
 }
 
 func greetPlayer(player *playerConnection) {
-	fmt.Println("Greeting player ")
 	playerIDMsg := euchre.Envelope{Type: "playerID", Data: player.id}
 	message, _ := json.Marshal(playerIDMsg)
 	// time.Sleep(200 * time.Millisecond)
@@ -102,6 +102,8 @@ func handleConnection(ctx context.Context, cancel context.CancelFunc, playerConn
 		select {
 		case <-ctx.Done():
 			log.Println("Game cancelled or completed")
+			drainChannel(playerConn.broadcastChan, playerConn.conn)
+			drainChannel(playerConn.messageChan, playerConn.conn)
 			return
 		case msg := <-playerConn.broadcastChan:
 			_, err := playerConn.conn.Write([]byte(msg))
@@ -132,6 +134,20 @@ func handleConnection(ctx context.Context, cancel context.CancelFunc, playerConn
 	}
 }
 
+// drainChannel
+// This resulted in a ridiculous speedup. over the while len > 0 continue approach
+func drainChannel(ch <-chan string, conn net.Conn) {
+	for {
+		select {
+		case msg := <-ch:
+			conn.SetWriteDeadline(time.Now().Add(500 * time.Millisecond)) // protect against stalled clients
+			conn.Write([]byte(msg))
+		default:
+			return
+		}
+	}
+}
+
 func NewGameServerFromConns(conns []net.Conn) *Server {
 
 	playerConnections := make([]*playerConnection, len(conns))
@@ -156,7 +172,6 @@ func NewGameServerFromConns(conns []net.Conn) *Server {
 }
 
 func waitForHello(conn net.Conn) bool {
-	fmt.Println("Waiting for hello.")
 	conn.SetReadDeadline(time.Now().Add(10 * time.Second))
 	buf := make([]byte, 50)
 	_, err := conn.Read(buf)
@@ -169,7 +184,6 @@ func waitForHello(conn net.Conn) bool {
 }
 
 func isAlive(conn net.Conn) bool {
-	fmt.Println("Checking for liveness.")
 	message := euchre.Envelope{Type: "connectionCheck", Data: "Ping"}
 	res, _ := json.Marshal(message)
 	messageStr := fmt.Sprint(string(res), "\n")
@@ -239,19 +253,11 @@ func startGame(playerConns []net.Conn, mu *sync.Mutex, numConcurrentGames *int, 
 	defer func() {
 		mu.Lock()
 		*numConcurrentGames--
-		fmt.Println("NumConcurrentGames \n\n\n", *numConcurrentGames)
+		fmt.Println("NumConcurrentGames ", *numConcurrentGames)
 		mu.Unlock()
 		server.cancel()
 		for _, conn := range playerConns {
-			// for {
-			// 	if len(server.Connections[i].broadcastChan) > 0 || len(server.Connections[i].messageChan) > 0 {
-			// 		time.Sleep(10 * time.Millisecond)
-			// 	} else {
-			// 		break
-			// 	}
-			// }
-			// conn.Close()
-			ct.done(conn)
+			ct.done(conn) // conn closed in handleConnection
 		}
 	}()
 
