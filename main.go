@@ -1,15 +1,9 @@
 package main
 
 import (
-	"context"
-	"euchre/euchre"
 	"euchre/server"
-	"fmt"
 	"log"
-	"net"
 	"os"
-	"os/signal"
-	"syscall"
 )
 
 func setUpLogger() *os.File {
@@ -32,32 +26,20 @@ func main() {
 	logFile := setUpLogger()
 	defer logFile.Close()
 
-	listener := server.NewGameListener()
-	defer listener.Close()
+	// listener := server.NewGameListener()
+	// defer listener.Close()
+	// log.Println("Euchre server listening...")
+	//here
 
-	log.Println("Euchre server listening...")
+	euchreServer := server.NewServer()
 
-	connTrackr := server.NewConnTracker()
+	go euchreServer.AcceptConns()
+	go euchreServer.StartGames()
 
-	ctx, cancel := context.WithCancel(context.Background())
+	euchreServer.GracefulShutdown()
 
-	signalChan := make(chan os.Signal, 1)
-	signal.Notify(signalChan, os.Interrupt, syscall.SIGTERM)
-	go func() {
-		<-signalChan
-		log.Println("Shutdown signal received...")
-		cancel()
-	}()
+	// go server.AcceptConns(ctx, listener, connChan, &connTrackr)
 
-	connChan := make(chan net.Conn, server.MaxConcurrentGames*euchre.NumPlayers)
+	// go server.StartGames(ctx, connChan, &connTrackr)
 
-	go server.AcceptConns(ctx, listener, connChan, &connTrackr)
-
-	go server.StartGames(ctx, connChan, &connTrackr)
-
-	<-ctx.Done()
-	fmt.Println("Intitiating shutdown. Waiting for games in progress to finish...")
-	connTrackr.Prune()
-	connTrackr.Wait()
-	fmt.Println("Graceful shutdown complete.")
 }
