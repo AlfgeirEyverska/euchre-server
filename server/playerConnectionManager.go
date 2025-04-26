@@ -97,6 +97,7 @@ func handleConnection(ctx context.Context, cancel context.CancelFunc, playerConn
 			log.Println("Game cancelled or completed")
 			drainChannel(playerConn.broadcastChan, playerConn.conn)
 			drainChannel(playerConn.messageChan, playerConn.conn)
+			close(playerConn.responseChan)
 			return
 		case msg := <-playerConn.broadcastChan:
 			_, err := playerConn.conn.Write([]byte(msg))
@@ -130,11 +131,15 @@ func handleConnection(ctx context.Context, cancel context.CancelFunc, playerConn
 // drainChannel
 // This resulted in a ridiculous speedup. over the while len > 0 continue approach
 func drainChannel(ch <-chan string, conn net.Conn) {
+	// timeout := time.After(200 * time.Millisecond)
 	for {
 		select {
 		case msg := <-ch:
+			// conn.SetWriteDeadline(time.Now().Add(10 * time.Millisecond))
 			conn.SetWriteDeadline(time.Now().Add(500 * time.Millisecond)) // protect against stalled clients
 			conn.Write([]byte(msg))
+		// case <-timeout:
+		// 	return
 		default:
 			return
 		}

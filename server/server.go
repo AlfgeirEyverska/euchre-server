@@ -25,7 +25,6 @@ type Server struct {
 	cancel   context.CancelFunc
 	connChan chan net.Conn
 	tracker  *ConnTracker
-	listener net.Listener
 }
 
 func NewServer() *Server {
@@ -42,25 +41,43 @@ func NewServer() *Server {
 
 	connChan := make(chan net.Conn, MaxConcurrentGames*euchre.NumPlayers)
 	tracker := NewConnTracker()
-	listener := NewGameListener()
 
 	return &Server{
 		ctx:      ctx,
 		cancel:   cancel,
 		connChan: connChan,
 		tracker:  &tracker,
-		listener: listener,
 	}
 
 }
 
 func NewGameListener() net.Listener {
-	ln, err := net.Listen("tcp", ":8080")
+	lc := net.ListenConfig{
+		Control: func(network, address string, c syscall.RawConn) error {
+			var err error
+			controlErr := c.Control(func(fd uintptr) {
+				err = syscall.SetsockoptInt(int(fd), syscall.SOL_SOCKET, syscall.SO_REUSEADDR, 1)
+			})
+			if controlErr != nil {
+				return controlErr
+			}
+			return err
+		},
+	}
+	ln, err := lc.Listen(context.Background(), "tcp", ":8080")
 	if err != nil {
 		log.Fatalln(err)
 	}
 	return ln
 }
+
+// func NewGameListener() net.Listener {
+// 	ln, err := net.Listen("tcp", ":8080")
+// 	if err != nil {
+// 		log.Fatalln(err)
+// 	}
+// 	return ln
+// }
 
 func waitForHello(conn net.Conn) bool {
 	conn.SetReadDeadline(time.Now().Add(10 * time.Second))
@@ -78,13 +95,13 @@ func isAlive(conn net.Conn) bool {
 	message := euchre.Envelope{Type: "connectionCheck", Data: "Ping"}
 	res, _ := json.Marshal(message)
 	messageStr := fmt.Sprint(string(res), "\n")
-	// conn.SetReadDeadline(time.Now().Add(100 * time.Millisecond))
 
 	if _, err := conn.Write([]byte(messageStr)); err != nil {
 		log.Println("Failed to write to connection during liveness check")
 		return false
 	}
 
+	conn.SetReadDeadline(time.Now().Add(100 * time.Millisecond))
 	buf := make([]byte, 50)
 	n, err := conn.Read(buf)
 	if err != nil {
@@ -97,7 +114,8 @@ func isAlive(conn net.Conn) bool {
 
 // acceptConns takes all incoming Connections from the net.Listener and puts them in connChan
 func (s *Server) AcceptConns() {
-	defer s.listener.Close()
+	listener := NewGameListener()
+	defer listener.Close()
 	log.Println("Euchre server listening...")
 
 	for {
@@ -106,7 +124,7 @@ func (s *Server) AcceptConns() {
 			log.Println("Shutting down AcceptConns...")
 			return
 		default:
-			conn, err := s.listener.Accept()
+			conn, err := listener.Accept()
 			if err != nil {
 				log.Println("Connection accept error:", err)
 				continue
@@ -150,6 +168,12 @@ func startGame(playerConns []net.Conn, mu *sync.Mutex, numConcurrentGames *int, 
 		fmt.Println("NumConcurrentGames ", *numConcurrentGames)
 		mu.Unlock()
 		connMan.cancel()
+
+		// for _, pconn := range connMan.Connections {
+		// 	close(pconn.broadcastChan)
+		// 	close(pconn.messageChan)
+		// }
+
 		for _, conn := range playerConns {
 			ct.done(conn) // conn closed in handleConnection
 		}

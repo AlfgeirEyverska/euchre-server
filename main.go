@@ -11,8 +11,9 @@ func setUpLogger() *os.File {
 	if err != nil {
 		log.Fatal(err)
 	}
-	// log.SetOutput(os.Stdout)
-	log.SetOutput(logFile)
+	log.SetOutput(os.Stdout)
+	// log.SetOutput(logFile)
+	// log.SetOutput(io.Discard)
 	log.SetFlags(log.LstdFlags | log.Lshortfile)
 	return logFile
 }
@@ -25,21 +26,10 @@ func main() {
 
 	logFile := setUpLogger()
 	defer logFile.Close()
-
-	// listener := server.NewGameListener()
-	// defer listener.Close()
-	// log.Println("Euchre server listening...")
-	//here
-
 	euchreServer := server.NewServer()
 
 	go euchreServer.AcceptConns()
 	go euchreServer.StartGames()
 
 	euchreServer.GracefulShutdown()
-
-	// go server.AcceptConns(ctx, listener, connChan, &connTrackr)
-
-	// go server.StartGames(ctx, connChan, &connTrackr)
-
 }
