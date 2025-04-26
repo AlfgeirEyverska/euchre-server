@@ -264,7 +264,7 @@ func (gs *euchreGameState) askPlayerToPlayCard(firstPlayer bool, cardLead card) 
 		log.Fatalln("Unable to get valid card cast out of validResponses map")
 	}
 	// REMOVE
-	time.Sleep(100 * time.Millisecond)
+	time.Sleep(500 * time.Millisecond)
 	return play{gs.CurrentPlayer, valueCard}
 }
 
