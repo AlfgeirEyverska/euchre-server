@@ -18,7 +18,7 @@ import (
 // I have determined that the network seems to be a bottleneck and
 // My laptop can only handle 2 concurrent games, continuously
 // 1 works the most efficiency and I get more throughput
-const MaxConcurrentGames = 1
+const MaxConcurrentGames = 10
 
 type Server struct {
 	ctx      context.Context

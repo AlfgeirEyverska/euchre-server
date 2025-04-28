@@ -1,6 +1,7 @@
 package euchre
 
 import (
+	"encoding/json"
 	"fmt"
 	"log"
 	"strings"
@@ -379,7 +380,7 @@ func (gs *euchreGameState) nextPlayer() {
 
 		lonePlayerID := gs.whoOrdered.ID
 		lonePlayerPartner := (lonePlayerID + 2) % NumPlayers
-		log.Println("Lone Player ", lonePlayerID, " Partner ", lonePlayerPartner)
+		// log.Println("Lone Player ", lonePlayerID, " Partner ", lonePlayerPartner)
 
 		if gs.CurrentPlayer.ID == lonePlayerPartner {
 			gs.CurrentPlayer = gs.players[nextPlayerID(*gs.CurrentPlayer)]
@@ -570,6 +571,34 @@ func (gs euchreGameState) validPlays(firstPlayer bool, cardLead card) []card {
 	}
 }
 
+func unpackJson(message string) string {
+	env := Envelope{}
+	err := json.Unmarshal([]byte(message), &env)
+	if err != nil {
+		log.Println("Unable to unpack json")
+		return ""
+	}
+	fmt.Println("TRYING TO UNPACK ENVELOPE")
+	fmt.Println(env.Type)
+	fmt.Println(env.Data)
+
+	mapData, ok := env.Data.(map[string]any)
+	if !ok {
+		log.Println("Unable to unpack json")
+		return ""
+	}
+
+	res, ok := mapData["response"]
+	if !ok {
+		log.Println("Unable to unpack json")
+		return ""
+	}
+
+	sres := fmt.Sprint(res)
+
+	return sres
+}
+
 // getValidResponse is an infinite loop will not return until player gives a valid response
 // The response string that is returned will always be a valid key of the validResponses map that is passed in
 func (gs euchreGameState) getValidResponse(playerID int, message string, validResponses map[string]any) string {
@@ -577,11 +606,14 @@ func (gs euchreGameState) getValidResponse(playerID int, message string, validRe
 		response := gs.UI.AskPlayerForX(playerID, message)
 		response = strings.TrimSpace(response)
 
-		_, ok := validResponses[response]
+		//Unpack json here
+		res := unpackJson(response)
+
+		_, ok := validResponses[res]
 		if !ok {
 			gs.UI.MessagePlayer(playerID, gs.Messages.InvalidInput())
 		} else {
-			return response
+			return res
 		}
 	}
 }

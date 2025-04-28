@@ -94,7 +94,7 @@ func handleConnection(ctx context.Context, cancel context.CancelFunc, playerConn
 		playerConn.conn.SetWriteDeadline(time.Now().Add(6 * time.Minute))
 		select {
 		case <-ctx.Done():
-			log.Println("Game cancelled or completed")
+			// log.Println("Game cancelled or completed")
 			drainChannel(playerConn.broadcastChan, playerConn.conn)
 			drainChannel(playerConn.messageChan, playerConn.conn)
 			close(playerConn.responseChan)
