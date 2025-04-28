@@ -573,14 +573,12 @@ func (gs euchreGameState) validPlays(firstPlayer bool, cardLead card) []card {
 
 func unpackJson(message string) string {
 	env := Envelope{}
+
 	err := json.Unmarshal([]byte(message), &env)
 	if err != nil {
 		log.Println("Unable to unpack json")
 		return ""
 	}
-	fmt.Println("TRYING TO UNPACK ENVELOPE")
-	fmt.Println(env.Type)
-	fmt.Println(env.Data)
 
 	mapData, ok := env.Data.(map[string]any)
 	if !ok {
