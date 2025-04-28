@@ -45,35 +45,35 @@ func LazyBot(doneChan chan int) {
 			handleConnectionCheck(conn)
 		case "pickUpOrPass":
 			handlePickUpOrPass(message.Data)
-			_, err = conn.Write([]byte("1\n"))
+			_, err = conn.Write(encodeResponse(message.Type, 1))
 			if err != nil {
 				log.Println(err)
 				return
 			}
 		case "orderOrPass":
 			handleOrderOrPass(message.Data)
-			_, err = conn.Write([]byte("2\n"))
+			_, err = conn.Write(encodeResponse(message.Type, 2))
 			if err != nil {
 				log.Println(err)
 				return
 			}
 		case "dealerDiscard":
 			handleDealerDiscard(message.Data)
-			_, err = conn.Write([]byte("1\n"))
+			_, err = conn.Write(encodeResponse(message.Type, 1))
 			if err != nil {
 				log.Println(err)
 				return
 			}
 		case "playCard":
 			handlePlayCard(message.Data)
-			_, err = conn.Write([]byte("1\n"))
+			_, err = conn.Write(encodeResponse(message.Type, 1))
 			if err != nil {
 				log.Println(err)
 				return
 			}
 		case "goItAlone":
 			handleGoItAlone(message.Data)
-			_, err = conn.Write([]byte("2\n"))
+			_, err = conn.Write(encodeResponse(message.Type, 2))
 			if err != nil {
 				log.Println(err)
 				return

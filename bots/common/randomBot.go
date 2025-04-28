@@ -3,13 +3,12 @@ package common
 import (
 	"bufio"
 	"encoding/json"
-	"fmt"
 	"log"
 	"math/rand"
 	"net"
 )
 
-func sendRandomResponse(validResponses map[int]string, writer net.Conn) {
+func sendRandomResponse(messageType string, validResponses map[int]string, writer net.Conn) {
 
 	log.Println("Valid Responses Map:\n", validResponses)
 	log.Println("Length of map: ", len(validResponses))
@@ -21,9 +20,10 @@ func sendRandomResponse(validResponses map[int]string, writer net.Conn) {
 	}
 	log.Println("Random n chosen: ", n)
 
-	message := fmt.Sprintf("%d\n", n)
-	log.Println("Message: ", message)
-	_, err := writer.Write([]byte(message))
+	response := encodeResponse(messageType, n)
+
+	log.Println("Message: ", response)
+	_, err := writer.Write(response)
 	if err != nil {
 		log.Println(err)
 	}
@@ -68,19 +68,19 @@ func RandomBot(doneChan chan int) {
 			handleConnectionCheck(conn)
 		case "pickUpOrPass":
 			res := handlePickUpOrPass(message.Data)
-			sendRandomResponse(res.ValidRes, conn)
+			sendRandomResponse(message.Type, res.ValidRes, conn)
 		case "orderOrPass":
 			res := handleOrderOrPass(message.Data)
-			sendRandomResponse(res.ValidRes, conn)
+			sendRandomResponse(message.Type, res.ValidRes, conn)
 		case "dealerDiscard":
 			res := handleDealerDiscard(message.Data)
-			sendRandomResponse(res.ValidRes, conn)
+			sendRandomResponse(message.Type, res.ValidRes, conn)
 		case "playCard":
 			res := handlePlayCard(message.Data)
-			sendRandomResponse(res.ValidRes, conn)
+			sendRandomResponse(message.Type, res.ValidRes, conn)
 		case "goItAlone":
 			res := handleGoItAlone(message.Data)
-			sendRandomResponse(res.ValidRes, conn)
+			sendRandomResponse(message.Type, res.ValidRes, conn)
 		case "playerID":
 			handlePlayerID(message.Data)
 		case "dealerUpdate":

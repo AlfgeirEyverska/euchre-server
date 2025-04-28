@@ -582,13 +582,13 @@ func unpackJson(message string) string {
 
 	mapData, ok := env.Data.(map[string]any)
 	if !ok {
-		log.Println("Unable to unpack json")
+		log.Println("Unable to unpack json into map")
 		return ""
 	}
 
 	res, ok := mapData["response"]
 	if !ok {
-		log.Println("Unable to unpack json")
+		log.Println("Response not found in message")
 		return ""
 	}
 

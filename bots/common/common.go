@@ -212,3 +212,11 @@ func sayHello(conn net.Conn) {
 		log.Fatalln(err)
 	}
 }
+
+func encodeResponse(messageType string, data int) []byte {
+	msg := map[string]int{"response": data}
+	msgJson, _ := json.Marshal(msg)
+	env := Envelope{Type: messageType, Data: msgJson}
+	message, _ := json.Marshal(env)
+	return message
+}
