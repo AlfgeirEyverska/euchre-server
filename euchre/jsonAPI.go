@@ -6,6 +6,10 @@ import (
 	"log"
 )
 
+// TODO: Every response should have a "message field"
+// TODO: Every response should have a clear flow like suitOrdered PlayerID:id Action:ordered Trump:suit goingAlone:false message:...
+// TODO: Make the messages as consistent as possible with the same fields. ValidResponses should be handled consistently, too
+
 type playerInfo struct {
 	PlayerID int      `json:"playerID"`
 	Trump    string   `json:"trump"`
@@ -22,6 +26,7 @@ type suitOrdered struct {
 	Message    string `json:"message"`
 }
 
+// TODO: consider putting the message here
 type Envelope struct {
 	Type string `json:"type"`
 	Data any    `json:"data"`
