@@ -1,6 +1,7 @@
 import socket
-import time
 import json
+import time
+from multiprocessing import Process
  
 HOST = "localhost"
 PORT = 8080
@@ -15,12 +16,16 @@ def play():
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
 
         sock.connect((HOST, PORT))
-        sock_file = sock.makefile("r")
+        sock_file = sock.makefile("r", encoding="utf-8")
         
         sock.send(b"hello")
         
         while True:
-            line = sock_file.readline()
+            try:
+                line = sock_file.readline()
+            except ConnectionResetError as e:
+                # print("Connection reset by peer")
+                return
             
             if not line:
                 break
@@ -82,7 +87,16 @@ def play():
                 case _:
                     print("Unknown message type: ", message["type"])
 
+            time.sleep(0.05)
 
-# for i in range(10):
-#     play()
-play()
+
+
+if __name__=="__main__":
+    players = []
+    for i in range(4):
+        p = Process(target=play)
+        players.append(p)
+        p.start()
+    
+    for player in players:
+            player.join()

@@ -21,7 +21,7 @@ func PlayEuchre(ctx context.Context, gameState euchreGameState) {
 			}
 
 			message := gameState.Messages.DealerUpdate(gameState.CurrentDealer.ID)
-			gameState.UI.Broadcast(message)
+			gameState.API.Broadcast(message)
 
 			gameState.Deal()
 
