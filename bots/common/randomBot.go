@@ -3,13 +3,12 @@ package common
 import (
 	"bufio"
 	"encoding/json"
-	"fmt"
 	"log"
 	"math/rand"
 	"net"
 )
 
-func sendRandomResponse(validResponses map[int]string, writer net.Conn) {
+func sendRandomResponse(messageType string, validResponses map[int]string, writer net.Conn) {
 
 	log.Println("Valid Responses Map:\n", validResponses)
 	log.Println("Length of map: ", len(validResponses))
@@ -21,116 +20,88 @@ func sendRandomResponse(validResponses map[int]string, writer net.Conn) {
 	}
 	log.Println("Random n chosen: ", n)
 
-	message := fmt.Sprintf("%d\n", n)
-	log.Println("Message: ", message)
-	_, err := writer.Write([]byte(message))
+	response := encodeResponse(messageType, n)
+
+	log.Println("Message: ", response)
+	_, err := writer.Write(response)
 	if err != nil {
-		log.Fatalln(err)
+		log.Println(err)
 	}
 }
 
-func RandomBot(doneChan chan struct{}) {
+func RandomBot(doneChan chan int) {
+
+	defer close(doneChan)
 
 	conn, err := net.Dial("tcp", "localhost:8080")
 	if err != nil {
-		log.Fatalln(err)
+		close(doneChan)
+		log.Println(err)
+		return
 	}
 	defer conn.Close()
 
-	reader := bufio.NewReader(conn)
-	// writer := bufio.NewWriter(conn)
+	sayHello(conn)
 
-	// giveName(conn)
+	reader := bufio.NewReader(conn)
 
 	for {
 		buf, err := reader.ReadBytes('\n')
 		if err != nil {
-			log.Fatalln(err)
+			log.Println(err)
+			return
 		}
 
-		var data map[string]json.RawMessage
-		err = json.Unmarshal(buf, &data)
+		var message Envelope
+		err = json.Unmarshal(buf, &message)
 		if err != nil {
 			log.Println("Original Unmarshal Failure: ", string(buf))
-			log.Fatalln(err)
+			log.Println(err)
+			return
 		}
 
-		messageType := FirstKey(data)
-		log.Println("First Key: ", messageType)
-		log.Println("Raw JSON: ", string(data[messageType]))
+		log.Println("First Key: ", message.Type)
+		log.Println("Raw JSON: ", string(message.Data))
 
-		switch messageType {
+		switch message.Type {
 		case "connectionCheck":
 			handleConnectionCheck(conn)
 		case "pickUpOrPass":
-			res := handlePickUpOrPass(data[messageType])
-			sendRandomResponse(res.ValidRes, conn)
-			// _, err = conn.Write([]byte("1\n"))
-			// if err != nil {
-			// 	log.Fatalln(err)
-			// }
+			res := handlePickUpOrPass(message.Data)
+			sendRandomResponse(message.Type, res.ValidRes, conn)
 		case "orderOrPass":
-			res := handleOrderOrPass(data[messageType])
-			sendRandomResponse(res.ValidRes, conn)
-
-			// _, err = conn.Write([]byte("2\n"))
-			// if err != nil {
-			// 	log.Fatalln(err)
-			// }
+			res := handleOrderOrPass(message.Data)
+			sendRandomResponse(message.Type, res.ValidRes, conn)
 		case "dealerDiscard":
-			res := handleDealerDiscard(data[messageType])
-			sendRandomResponse(res.ValidRes, conn)
-
-			// _, err = conn.Write([]byte("1\n"))
-			// if err != nil {
-			// 	log.Fatalln(err)
-			// }
+			res := handleDealerDiscard(message.Data)
+			sendRandomResponse(message.Type, res.ValidRes, conn)
 		case "playCard":
-			res := handlePlayCard(data[messageType])
-			sendRandomResponse(res.ValidRes, conn)
-
-			// _, err = conn.Write([]byte("1\n"))
-			// if err != nil {
-			// 	log.Fatalln(err)
-			// }
+			res := handlePlayCard(message.Data)
+			sendRandomResponse(message.Type, res.ValidRes, conn)
 		case "goItAlone":
-
-			res := handleGoItAlone(data[messageType])
-			sendRandomResponse(res.ValidRes, conn)
-
-			// _, err = conn.Write([]byte("2\n"))
-			// if err != nil {
-			// 	log.Fatalln(err)
-			// }
-		case "PlayerID":
-			handlePlayerID(buf)
+			res := handleGoItAlone(message.Data)
+			sendRandomResponse(message.Type, res.ValidRes, conn)
+		case "playerID":
+			handlePlayerID(message.Data)
 		case "dealerUpdate":
-			handleDealerUpdate(buf)
+			handleDealerUpdate(message.Data)
 		case "suitOrdered":
-			handleSuitOrdered(data[messageType])
+			handleSuitOrdered(message.Data)
 		case "plays":
-			handlePlays(data[messageType])
+			handlePlays(message.Data)
 		case "trickScore":
-			handleTrickScore(data[messageType])
+			handleTrickScore(message.Data)
 		case "updateScore":
-			handleUpdateScore(data[messageType])
+			handleUpdateScore(message.Data)
 		case "error":
-			handleError(data[messageType])
+			handleError(message.Data)
 		case "gameOver":
-			handleGameOver(data[messageType])
-			close(doneChan)
+			res := handleGameOver(message.Data)
+			doneChan <- res
 			return
 		default:
-			log.Println("Unknown : ", messageType)
-			log.Fatalln("Unsupported message type.")
+			log.Println("Unknown : ", message.Type)
+			log.Println("Unsupported message type.")
 		}
-
 	}
-
-	// 	_, err = conn.Write([]byte("Random Bot"))
-	// 	if err != nil {
-	// 		log.Fatalln(err)
-	// 	}
-	// }
-
 }

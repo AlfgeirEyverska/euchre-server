@@ -22,6 +22,11 @@ type suitOrdered struct {
 	Message    string `json:"message"`
 }
 
+type Envelope struct {
+	Type string `json:"type"`
+	Data any    `json:"data"`
+}
+
 type JsonAPI struct{}
 
 func marshalOrPanic(v any) string {
@@ -41,12 +46,12 @@ func handToStrings(hand deck) []string {
 }
 
 func (api JsonAPI) InvalidCard() string {
-	message := map[string]string{"error": "Invalid Card!"}
+	message := map[string]string{"type": "error", "data": "Invalid Card!"}
 	return marshalOrPanic(message)
 }
 
 func (api JsonAPI) InvalidInput() string {
-	message := map[string]string{"error": "Invalid input."}
+	message := map[string]string{"type": "error", "data": "Invalid input."}
 	return marshalOrPanic(message)
 }
 
@@ -60,10 +65,12 @@ func (api JsonAPI) PlayCard(playerID int, trump suit, flip card, hand deck) stri
 		validResponses[i+1] = v.String()
 	}
 
-	message := map[string]struct {
+	data := struct {
 		Info     playerInfo     `json:"playerInfo"`
 		ValidRes map[int]string `json:"validResponses"`
-	}{"playCard": {pi, validResponses}}
+	}{pi, validResponses}
+
+	message := Envelope{"playCard", data}
 
 	return marshalOrPanic(message)
 }
@@ -79,10 +86,12 @@ func (api JsonAPI) DealerDiscard(playerID int, trump suit, flip card, hand deck)
 		validResponses[i+1] = v.String()
 	}
 
-	message := map[string]struct {
+	data := struct {
 		Info     playerInfo     `json:"playerInfo"`
 		ValidRes map[int]string `json:"validResponses"`
-	}{"dealerDiscard": {pi, validResponses}}
+	}{pi, validResponses}
+
+	message := Envelope{"dealerDiscard", data}
 
 	return marshalOrPanic(message)
 }
@@ -98,10 +107,12 @@ func (api JsonAPI) PickUpOrPass(playerID int, trump suit, flip card, hand deck) 
 		Message:  "Tell the dealer to pick it up or pass.",
 	}
 
-	message := map[string]struct {
+	data := struct {
 		Info     playerInfo     `json:"playerInfo"`
 		ValidRes map[int]string `json:"validResponses"`
-	}{"pickUpOrPass": {pi, validResponses}}
+	}{pi, validResponses}
+
+	message := Envelope{"pickUpOrPass", data}
 
 	return marshalOrPanic(message)
 
@@ -126,11 +137,12 @@ func (api JsonAPI) OrderOrPass(playerID int, trump suit, flip card, hand deck) s
 		Message:  fmt.Sprint(flip.suit, "s are out. Order a suit or pass."),
 	}
 
-	message := map[string]struct {
+	data := struct {
 		Info     playerInfo     `json:"playerInfo"`
 		ValidRes map[int]string `json:"validResponses"`
-	}{"orderOrPass": {pi, validResponses}}
+	}{pi, validResponses}
 
+	message := Envelope{"orderOrPass", data}
 	return marshalOrPanic(message)
 }
 
@@ -139,16 +151,18 @@ func (api JsonAPI) GoItAlone(playerID int) string {
 
 	validResponses := map[int]string{1: "Yes", 2: "No"}
 
-	message := map[string]struct {
+	data := struct {
 		Message  string         `json:"message"`
 		ValidRes map[int]string `json:"validResponses"`
-	}{"goItAlone": {msg, validResponses}}
+	}{msg, validResponses}
+
+	message := Envelope{"goItAlone", data}
 
 	return marshalOrPanic(message)
 }
 
 func (api JsonAPI) DealerMustOrder() string {
-	message := map[string]string{"error": "Dealer must choose a suit at this time."}
+	message := map[string]string{"type": "error", "data": "Dealer must choose a suit at this time."}
 	return marshalOrPanic(message)
 }
 
@@ -165,68 +179,78 @@ func (api JsonAPI) PlayedSoFar(plays []play) string {
 		}
 		jsonPlays = append(jsonPlays, currentPlay)
 	}
-	message := map[string][]playJSON{"plays": jsonPlays}
+
+	message := Envelope{"plays", jsonPlays}
+
 	return marshalOrPanic(message)
 }
 
 func (api JsonAPI) TricksSoFar(evenScore int, oddScore int) string {
-	message := map[string]struct {
+	data := struct {
 		EvenTrickScore int `json:"evenTrickScore"`
 		OddTrickScore  int `json:"oddTrickScore"`
-	}{"trickScore": {evenScore, oddScore}}
+	}{evenScore, oddScore}
+
+	message := Envelope{"trickScore", data}
 
 	return marshalOrPanic(message)
 }
 
 func (api JsonAPI) UpdateScore(evenScore int, oddScore int) string {
-	message := map[string]struct {
+	data := struct {
 		EvenScore int `json:"evenScore"`
 		OddScore  int `json:"oddScore"`
-	}{"trickScore": {evenScore, oddScore}}
+	}{evenScore, oddScore}
 
+	message := Envelope{"updateScore", data}
 	return marshalOrPanic(message)
 }
 
 func (api JsonAPI) DealerUpdate(playerID int) string {
-	message := map[string]struct {
+	data := struct {
 		Message string `json:"message"`
 		Dealer  int    `json:"dealer"`
 	}{
-		"dealerUpdate": {
-			Message: fmt.Sprint("Player ", playerID, " is dealing."),
-			Dealer:  playerID,
-		},
+		Message: fmt.Sprint("Player ", playerID, " is dealing."),
+		Dealer:  playerID,
 	}
+	message := Envelope{"dealerUpdate", data}
 	return marshalOrPanic(message)
 }
 
 func (api JsonAPI) PlayerOrderedSuit(playerID int, trump suit) string {
-	message := map[string]suitOrdered{
-		"suitOrdered": {
-			Message:    fmt.Sprint("Player ", playerID, " Ordered ", trump, "s"),
-			PlayerID:   playerID,
-			Action:     "Ordered Suit",
-			Trump:      trump.String(),
-			GoingAlone: false}}
+	data := suitOrdered{
+		Message:    fmt.Sprint("Player ", playerID, " Ordered ", trump, "s"),
+		PlayerID:   playerID,
+		Action:     "Ordered Suit",
+		Trump:      trump.String(),
+		GoingAlone: false}
+
+	message := Envelope{"suitOrdered", data}
 	return marshalOrPanic(message)
 }
 
 func (api JsonAPI) PlayerOrderedSuitAndGoingAlone(playerID int, trump suit) string {
-	message := map[string]suitOrdered{
-		"suitOrdered": {
-			Message:    fmt.Sprint("Player ", playerID, " Ordered ", trump, "s"),
-			PlayerID:   playerID,
-			Action:     "Ordered Suit",
-			Trump:      trump.String(),
-			GoingAlone: true}}
+	data := suitOrdered{
+		Message:    fmt.Sprint("Player ", playerID, " Ordered ", trump, "s"),
+		PlayerID:   playerID,
+		Action:     "Ordered Suit",
+		Trump:      trump.String(),
+		GoingAlone: true}
+
+	message := Envelope{"suitOrdered", data}
 	return marshalOrPanic(message)
 }
 
 func (api JsonAPI) GameOver(winner string) string {
 	msg := fmt.Sprint("Game Over! ", winner, " Team Won!")
-	message := map[string]struct {
+
+	data := struct {
 		Winner  string
 		Message string
-	}{"gameOver": {winner, msg}}
+	}{winner, msg}
+
+	message := Envelope{"gameOver", data}
+
 	return marshalOrPanic(message)
 }

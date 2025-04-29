@@ -14,22 +14,68 @@ func main() {
 		log.Fatal(err)
 	}
 	defer logFile.Close()
-	log.SetOutput(os.Stdout)
-	// log.SetOutput(logFile)
+	// log.SetOutput(os.Stdout)
+	log.SetOutput(logFile)
 	log.SetFlags(log.LstdFlags | log.Lshortfile)
 
-	numPlayers := 6
-	fmt.Println("hello, world!")
-	doneChans := []chan struct{}{}
-	for i := 0; i < numPlayers; i++ {
-		doneChan := make(chan struct{})
-		doneChans = append(doneChans, doneChan)
-		go bots.RandomBot(doneChan)
+	numPlayers := 4
+	numGames := 1
+
+	lazyScore := 0
+	randomScore := 0
+	const (
+		even = 0
+		odd  = 1
+	)
+
+	doneChans := []chan int{}
+	game := 0
+	failedGames := 0
+gameLoop:
+	for game < numGames {
+		fmt.Println("game: ", game)
+		// fmt.Println("Starting bots")
+		for i := 0; i < numPlayers; i++ {
+
+			doneChan := make(chan int, 1)
+			// defer close(doneChan)
+
+			doneChans = append(doneChans, doneChan)
+			if i%2 == 0 {
+				go bots.LazyBot(doneChan)
+			} else {
+				go bots.RandomBot(doneChan)
+			}
+			// time.Sleep(1 * time.Second)
+		}
+
+		var winner int
+		var ok bool
+		for i := 0; i < numPlayers; i++ {
+			log.Println("Waiting for player ", i)
+			winner, ok = <-doneChans[i]
+			if !ok {
+				fmt.Println("Player ", i, " failed to complete. Game Aborted.")
+				failedGames++
+				doneChans = nil
+				continue gameLoop
+			}
+		}
+		doneChans = nil
+
+		if winner == even {
+			lazyScore++
+		} else {
+			randomScore++
+		}
+		log.Println("Game Over!!")
+		game++
+
+		// time.Sleep(1000 * time.Millisecond)
 	}
 
-	for i := 0; i < numPlayers; i++ {
-		<-doneChans[i]
-	}
-	log.Println("Game Over!!")
+	fmt.Printf("Lazy wins: %d\nRandom wins: %d\n", lazyScore, randomScore)
+	failureRate := 100.0 * (float64(failedGames) / float64(numGames))
+	fmt.Printf("Failed Games: %d, %.0f%%\n", failedGames, failureRate)
 
 }

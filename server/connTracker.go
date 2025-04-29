@@ -49,6 +49,18 @@ func (ct *ConnTracker) CloseAll() {
 	}
 }
 
+func (ct *ConnTracker) Prune() {
+	ct.mu.Lock()
+	defer ct.mu.Unlock()
+	for conn := range ct.conns {
+		if !isAlive(conn) {
+			_ = conn.Close() // ignore error — shutting down anyway
+			ct.wg.Done()
+			delete(ct.conns, conn)
+		}
+	}
+}
+
 // wait blocks until all tracked connections have completed.
 func (ct *ConnTracker) Wait() {
 	ct.wg.Wait()

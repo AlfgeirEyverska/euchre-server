@@ -1,15 +1,9 @@
 package main
 
 import (
-	"context"
-	"euchre/euchre"
 	"euchre/server"
-	"fmt"
 	"log"
-	"net"
 	"os"
-	"os/signal"
-	"syscall"
 )
 
 func setUpLogger() *os.File {
@@ -17,8 +11,9 @@ func setUpLogger() *os.File {
 	if err != nil {
 		log.Fatal(err)
 	}
-	// log.SetOutput(os.Stdout)
-	log.SetOutput(logFile)
+	log.SetOutput(os.Stdout)
+	// log.SetOutput(logFile)
+	// log.SetOutput(io.Discard)
 	log.SetFlags(log.LstdFlags | log.Lshortfile)
 	return logFile
 }
@@ -31,36 +26,10 @@ func main() {
 
 	logFile := setUpLogger()
 	defer logFile.Close()
+	euchreServer := server.NewServer()
 
-	listener := server.NewGameListener()
-	defer listener.Close()
+	go euchreServer.AcceptConns()
+	go euchreServer.StartGames()
 
-	log.Println("Euchre server listening...")
-
-	connTrackr := server.NewConnTracker()
-
-	ctx, cancel := context.WithCancel(context.Background())
-
-	signalChan := make(chan os.Signal, 1)
-	signal.Notify(signalChan, os.Interrupt, syscall.SIGTERM)
-	go func() {
-		<-signalChan
-		log.Println("Shutdown signal received...")
-		cancel()
-	}()
-
-	connChan := make(chan net.Conn, server.MaxConcurrentGames*euchre.NumPlayers)
-	lobbyChan := make(chan []net.Conn, server.MaxConcurrentGames)
-
-	go server.AcceptConns(ctx, listener, connChan, &connTrackr)
-
-	go server.MakeLobbies(ctx, connChan, lobbyChan, &connTrackr)
-
-	go server.StartGames(ctx, lobbyChan, &connTrackr)
-
-	<-ctx.Done()
-	fmt.Println("Intitiating shutdown. Waiting for games in progress to finish...")
-	connTrackr.Wait()
-	// connTrackr.CloseAll()
-	fmt.Println("Graceful shutdown complete.")
+	euchreServer.GracefulShutdown()
 }

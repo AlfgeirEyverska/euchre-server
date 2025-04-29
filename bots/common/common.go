@@ -9,6 +9,11 @@ import (
 
 var id int
 
+type Envelope struct {
+	Type string          `json:"type"`
+	Data json.RawMessage `json:"data"`
+}
+
 type playerInfo struct {
 	PlayerID int      `json:"playerID"`
 	Trump    string   `json:"trump"`
@@ -45,7 +50,7 @@ type messageInfo struct {
 	ValidRes map[int]string `json:"validResponses"`
 }
 
-func handleDealerUpdate(buf []byte) dealerUpdate {
+func handleDealerUpdate(buf json.RawMessage) dealerUpdate {
 	var message dealerUpdate
 	err := json.Unmarshal(buf, &message)
 	if err != nil {
@@ -86,7 +91,7 @@ func handleError(buf json.RawMessage) {
 
 func handleConnectionCheck(writer net.Conn) {
 	message := fmt.Sprintf("Pong\n")
-	log.Println("Message: ", message)
+	log.Println("Connection Check Message: ", message)
 	_, err := writer.Write([]byte(message))
 	if err != nil {
 		log.Fatalln(err)
@@ -159,23 +164,33 @@ func handleUpdateScore(buf json.RawMessage) {
 	log.Println(message)
 }
 
-func handlePlayerID(buf []byte) {
+func handlePlayerID(buf json.RawMessage) {
 	log.Print(string(buf))
-	p := map[string]int{}
+	var p int
 	if err := json.Unmarshal(buf, &p); err != nil {
 		log.Fatalln(err)
 	}
-	log.Print("I am player ", p["PlayerID"])
-	id = p["PlayerID"]
+	log.Print("I am player ", p)
+	id = p
 }
 
-func handleGameOver(buf json.RawMessage) {
+func handleGameOver(buf json.RawMessage) int {
 	var message map[string]string
 	err := json.Unmarshal(buf, &message)
 	if err != nil {
 		log.Fatalln(err)
 	}
 	log.Println(message)
+	winner, ok := message["Winner"]
+	if !ok {
+		log.Fatalln("Could not determine winner")
+	}
+	if winner == "Even" {
+		// fmt.Println("I think even won")
+		return 0
+	}
+	// fmt.Println("I think odd won")
+	return 1
 }
 
 func giveName(conn net.Conn, name string) {
@@ -187,9 +202,21 @@ func giveName(conn net.Conn, name string) {
 	}
 }
 
-func FirstKey(m map[string]json.RawMessage) string {
-	for k, _ := range m {
-		return k
+func sayHello(conn net.Conn) {
+	msg := map[string]string{"message": "hello"}
+	msgJson, _ := json.Marshal(msg)
+	env := Envelope{Type: "hello", Data: msgJson}
+	message, _ := json.Marshal(env)
+	_, err := conn.Write([]byte(message))
+	if err != nil {
+		log.Fatalln(err)
 	}
-	return ""
+}
+
+func encodeResponse(messageType string, data int) []byte {
+	msg := map[string]int{"response": data}
+	msgJson, _ := json.Marshal(msg)
+	env := Envelope{Type: messageType, Data: msgJson}
+	message, _ := json.Marshal(env)
+	return message
 }

@@ -7,160 +7,101 @@ import (
 	"fmt"
 	"log"
 	"net"
+	"os"
+	"os/signal"
 	"sync"
+	"syscall"
 	"time"
 )
 
-const MaxConcurrentGames = 3
-
-type playerConnection struct {
-	id            int
-	conn          net.Conn
-	broadcastChan chan string
-	messageChan   chan string
-	responseChan  chan string
-}
-
-// name          string
+// Through trial and error (running 3 concurrent 1000 game trials)
+// I have determined that the network seems to be a bottleneck and
+// My laptop can only handle 2 concurrent games, continuously
+// 1 works the most efficiency and I get more throughput
+const MaxConcurrentGames = 10
 
 type Server struct {
-	ctx         context.Context
-	cancel      context.CancelFunc
-	Connections []*playerConnection
+	ctx      context.Context
+	cancel   context.CancelFunc
+	connChan chan net.Conn
+	tracker  *ConnTracker
 }
 
-func (s Server) Broadcast(message string) {
-	for i := range s.Connections {
-		s.Connections[i].broadcastChan <- message + "\n"
-	}
-}
+func NewServer() *Server {
 
-func (s Server) MessagePlayer(playerID int, message string) {
-	s.Connections[playerID].broadcastChan <- message + "\n"
-}
+	ctx, cancel := context.WithCancel(context.Background())
 
-// TODO: conisder returning err on timeout
-func (s Server) AskPlayerForX(player int, message string) string {
-	s.Connections[player].messageChan <- message + "\n"
-	select {
-	case x := <-s.Connections[player].responseChan:
-		return x
-	case <-time.After(30 * time.Second):
-		log.Printf("Timeout waiting for player %d", player)
-		return ""
-	case <-s.ctx.Done():
-		log.Println("Game context canceled")
-		return ""
-	}
-}
+	signalChan := make(chan os.Signal, 1)
+	signal.Notify(signalChan, os.Interrupt, syscall.SIGTERM)
+	go func() {
+		<-signalChan
+		log.Println("Shutdown signal received...")
+		cancel()
+	}()
 
-func greetPlayer(player *playerConnection) {
-	playerIDMsg := map[string]int{"PlayerID": player.id}
-	message, _ := json.Marshal(playerIDMsg)
-	player.broadcastChan <- string(message) + "\n"
-}
+	connChan := make(chan net.Conn, MaxConcurrentGames*euchre.NumPlayers)
+	tracker := NewConnTracker()
 
-func (s Server) AskPlayerForName(playerID int) string {
-
-	playerName := s.AskPlayerForX(playerID, "What is your name?")
-
-	response := map[string]string{}
-	if err := json.Unmarshal([]byte(playerName), &response); err != nil {
-		log.Fatalln(err)
+	return &Server{
+		ctx:      ctx,
+		cancel:   cancel,
+		connChan: connChan,
+		tracker:  &tracker,
 	}
 
-	name, ok := response["Name"]
-	if !ok {
-		log.Fatalln("No name given")
-	}
-
-	message := fmt.Sprintln("Hello, ", name)
-	s.MessagePlayer(playerID, message)
-	return playerName
 }
 
 func NewGameListener() net.Listener {
-	ln, err := net.Listen("tcp", ":8080")
+	lc := net.ListenConfig{
+		Control: func(network, address string, c syscall.RawConn) error {
+			var err error
+			controlErr := c.Control(func(fd uintptr) {
+				err = syscall.SetsockoptInt(int(fd), syscall.SOL_SOCKET, syscall.SO_REUSEADDR, 1)
+			})
+			if controlErr != nil {
+				return controlErr
+			}
+			return err
+		},
+	}
+	ln, err := lc.Listen(context.Background(), "tcp", ":8080")
 	if err != nil {
 		log.Fatalln(err)
 	}
 	return ln
 }
 
-func handleConnection(ctx context.Context, cancel context.CancelFunc, playerConn *playerConnection) {
-	defer playerConn.conn.Close()
+// func NewGameListener() net.Listener {
+// 	ln, err := net.Listen("tcp", ":8080")
+// 	if err != nil {
+// 		log.Fatalln(err)
+// 	}
+// 	return ln
+// }
 
-	buf := make([]byte, 1024)
-	for {
-		playerConn.conn.SetReadDeadline(time.Now().Add(6 * time.Minute))
-		playerConn.conn.SetWriteDeadline(time.Now().Add(6 * time.Minute))
-		select {
-		case <-ctx.Done():
-			log.Println("Game cancelled")
-			return
-		case msg := <-playerConn.broadcastChan:
-			_, err := playerConn.conn.Write([]byte(msg))
-			if err != nil {
-				fmt.Println("Error Writing To Conn")
-				cancel()
-				fmt.Println(err)
-				return
-			}
-		case msg := <-playerConn.messageChan:
-			_, err := playerConn.conn.Write([]byte(msg))
-			if err != nil {
-				fmt.Println("Error Writing To Conn")
-				fmt.Println(err)
-				cancel()
-				return
-			}
-
-			n, err := playerConn.conn.Read(buf)
-			if err != nil {
-				fmt.Println("Error Reading From Conn")
-				fmt.Println(err)
-				cancel()
-				return
-			}
-			playerConn.responseChan <- string(buf[:n])
-		}
+func waitForHello(conn net.Conn) bool {
+	conn.SetReadDeadline(time.Now().Add(10 * time.Second))
+	buf := make([]byte, 50)
+	_, err := conn.Read(buf)
+	if err != nil {
+		fmt.Println("Failed to get hello message from conn.")
+		return false
 	}
-}
-
-func NewGameServerFromConns(conns []net.Conn) *Server {
-
-	playerConnections := make([]*playerConnection, len(conns))
-	ctx, cancel := context.WithCancel(context.Background())
-
-	for i, conn := range conns {
-		playerConnections[i] = &playerConnection{
-			id:            i,
-			conn:          conn,
-			broadcastChan: make(chan string, 10),
-			messageChan:   make(chan string, 10),
-			responseChan:  make(chan string, 10),
-		}
-
-		go handleConnection(ctx, cancel, playerConnections[i])
-		greetPlayer(playerConnections[i])
-	}
-	return &Server{
-		ctx:         ctx,
-		cancel:      cancel,
-		Connections: playerConnections}
+	// fmt.Println("Received Hello: ", string(buf[:n]))
+	return true
 }
 
 func isAlive(conn net.Conn) bool {
-	fmt.Println("Checking for liveness ", conn)
-	message, _ := json.Marshal(map[string]string{"connectionCheck": "Ping"})
-	messageStr := fmt.Sprint(string(message), "\n")
-	// conn.SetReadDeadline(time.Now().Add(100 * time.Millisecond))
+	message := euchre.Envelope{Type: "connectionCheck", Data: "Ping"}
+	res, _ := json.Marshal(message)
+	messageStr := fmt.Sprint(string(res), "\n")
 
 	if _, err := conn.Write([]byte(messageStr)); err != nil {
 		log.Println("Failed to write to connection during liveness check")
 		return false
 	}
 
+	conn.SetReadDeadline(time.Now().Add(100 * time.Millisecond))
 	buf := make([]byte, 50)
 	n, err := conn.Read(buf)
 	if err != nil {
@@ -172,10 +113,14 @@ func isAlive(conn net.Conn) bool {
 }
 
 // acceptConns takes all incoming Connections from the net.Listener and puts them in connChan
-func AcceptConns(ctx context.Context, listener net.Listener, connChan chan net.Conn, ct *ConnTracker) {
+func (s *Server) AcceptConns() {
+	listener := NewGameListener()
+	defer listener.Close()
+	log.Println("Euchre server listening...")
+
 	for {
 		select {
-		case <-ctx.Done():
+		case <-s.ctx.Done():
 			log.Println("Shutting down AcceptConns...")
 			return
 		default:
@@ -184,105 +129,94 @@ func AcceptConns(ctx context.Context, listener net.Listener, connChan chan net.C
 				log.Println("Connection accept error:", err)
 				continue
 			}
-			log.Println("New connection accepted")
-			ct.add(conn)
-			if !isAlive(conn) {
+			if !waitForHello(conn) {
+				fmt.Println("Never got a hello message, discarding connection")
 				conn.Close()
-				ct.done(conn)
+				// ct.done(conn)
 				continue
 			}
-			connChan <- conn
+			s.tracker.add(conn)
+			log.Println("New connection accepted")
+			s.connChan <- conn
 		}
 	}
 }
 
-// makeLobbies makes full lobbies of 4 players
-func MakeLobbies(ctx context.Context, connChan chan net.Conn, lobbyChan chan []net.Conn, ct *ConnTracker) {
-	for {
-		select {
-		case <-ctx.Done():
-			log.Println("Shutting down MakeLobbies...")
-			return
-		default:
-			fmt.Printf("Waiting for %d players\n", euchre.NumPlayers)
-
-			var playerConns []net.Conn
-
-			// TODO: I need to think of the behavior that
-			// will be most helpful for what I want to do.
-			// timeout := time.After(30 * time.Second)
-			// timeout := time.After(2 * time.Minute)
-
-			for len(playerConns) < euchre.NumPlayers {
-				conn := <-connChan
-				log.Printf("Player %d connected\n", len(playerConns)+1)
-				playerConns = append(playerConns, conn)
-				if !isAlive(conn) {
-					log.Println("Received dead conn, skipping")
-					conn.Close()
-					ct.done(conn)
-					continue
-				}
-				// select {
-				// case conn := <-connChan:
-				// 	log.Printf("Player %d connected\n", len(playerConns)+1)
-				// 	playerConns = append(playerConns, conn)
-				// 	if !isAlive(conn) {
-				// 		log.Println("Received dead conn, skipping")
-				// 		conn.Close()
-				// 		ct.done(conn)
-				// 		continue
-				// 	}
-				// case <-timeout:
-				// 	log.Printf("Lobby timed out waiting for players\n")
-				// 	for _, c := range playerConns {
-				// 		c.Close()
-				// 		ct.done(c)
-				// 	}
-				// 	time.Sleep(5 * time.Second)
-				// 	continue
-				// }
-			}
-			log.Println("New full lobby")
-			fmt.Println("New full lobby")
-
-			select {
-			case lobbyChan <- playerConns:
-				log.Println("Lobby sent to dispatcher.")
-			default:
-				log.Println("Dispatcher full. Closing lobby.")
-				for _, c := range playerConns {
-					c.Close()
-					ct.done(c)
-				}
-			}
+func makeLobby(connChan chan net.Conn, ct *ConnTracker) []net.Conn {
+	playerConns := []net.Conn{}
+	for len(playerConns) < euchre.NumPlayers {
+		conn := <-connChan
+		if !isAlive(conn) {
+			log.Println("Received dead conn, skipping")
+			conn.Close()
+			ct.done(conn)
+			continue
 		}
+		log.Printf("Player %d connected\n", len(playerConns)+1)
+		playerConns = append(playerConns, conn)
+	}
+	return playerConns
+}
+
+func startGame(playerConns []net.Conn, mu *sync.Mutex, numConcurrentGames *int, ct *ConnTracker) {
+
+	connMan := NewPlayerConnectionManagerFromConns(playerConns)
+
+	defer func() {
+		mu.Lock()
+		*numConcurrentGames--
+		fmt.Println("NumConcurrentGames ", *numConcurrentGames)
+		mu.Unlock()
+		connMan.cancel()
+
+		// for _, pconn := range connMan.Connections {
+		// 	close(pconn.broadcastChan)
+		// 	close(pconn.messageChan)
+		// }
+
+		for _, conn := range playerConns {
+			ct.done(conn) // conn closed in handleConnection
+		}
+	}()
+
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		// time.Sleep(1 * time.Second)
+		game := euchre.NewEuchreGameState(connMan, euchre.JsonAPI{})
+		euchre.PlayEuchre(connMan.ctx, game)
+	}()
+
+	select {
+	case <-done:
+		log.Println("Game finished normally")
+	case <-connMan.ctx.Done():
+		fmt.Println("Game cancelled due to disconnect or timeout")
 	}
 }
 
-func StartGames(ctx context.Context, lobbyChan chan []net.Conn, ct *ConnTracker) {
+func (s *Server) StartGames() {
 	var mu sync.Mutex
 	var numConcurrentGames int
 
 	for {
 		select {
-		case <-ctx.Done():
+		case <-s.ctx.Done():
 			log.Println("Shutting down StartGames...")
 			return
 		default:
+
 			mu.Lock()
 			atCapacity := numConcurrentGames >= MaxConcurrentGames
 			mu.Unlock()
 
 			if atCapacity {
 				log.Println("Max concurrent games reached. Waiting...")
-				fmt.Println("Max concurrent games reached. Waiting...")
 				time.Sleep(5 * time.Second)
 				continue
 			}
 
-			// Only block when not atCapactiy
-			playerConns := <-lobbyChan
+			playerConns := makeLobby(s.connChan, s.tracker)
 
 			mu.Lock()
 			numConcurrentGames++
@@ -290,35 +224,15 @@ func StartGames(ctx context.Context, lobbyChan chan []net.Conn, ct *ConnTracker)
 			log.Println("New game starting. Active games:", numConcurrentGames)
 			mu.Unlock()
 
-			go func(pConns []net.Conn) {
-				defer func() {
-					mu.Lock()
-					numConcurrentGames--
-					fmt.Println("NumConcurrentGames ", numConcurrentGames)
-					mu.Unlock()
-					for _, conn := range pConns {
-						conn.Close()
-						ct.done(conn)
-					}
-				}()
-
-				server := NewGameServerFromConns(playerConns)
-				defer server.cancel()
-				done := make(chan struct{})
-
-				go func() {
-					defer close(done)
-					game := euchre.NewEuchreGameState(server, euchre.JsonAPI{})
-					euchre.PlayEuchre(server.ctx, game)
-				}()
-
-				select {
-				case <-done:
-					log.Println("Game finished normally")
-				case <-server.ctx.Done():
-					log.Println("Game cancelled due to disconnect or timeout")
-				}
-			}(playerConns)
+			go startGame(playerConns, &mu, &numConcurrentGames, s.tracker)
 		}
 	}
+}
+
+func (s *Server) GracefulShutdown() {
+	<-s.ctx.Done()
+	fmt.Println("Intitiating shutdown. Waiting for games in progress to finish...")
+	s.tracker.Prune()
+	s.tracker.Wait()
+	fmt.Println("Graceful shutdown complete.")
 }

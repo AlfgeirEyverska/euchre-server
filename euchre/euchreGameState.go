@@ -1,15 +1,15 @@
 package euchre
 
 import (
+	"encoding/json"
 	"fmt"
 	"log"
 	"strings"
-	"time"
 )
 
 const targetScore = 10
 
-type userInterface interface {
+type api interface {
 	AskPlayerForX(int, string) string
 	MessagePlayer(int, string)
 	Broadcast(string)
@@ -36,21 +36,21 @@ type messageGenerator interface {
 type euchreGameState struct {
 	gameDeck      deck
 	players       []*player
-	discard       deck
-	flip          card
-	trump         suit
-	leftBower     card
 	CurrentDealer *player
 	CurrentPlayer *player
-	whoOrdered    *player
-	goingItAlone  bool
 	evenTeamScore int
 	oddTeamScore  int
-	UI            userInterface
+	trump         suit
+	API           api
 	Messages      messageGenerator
+	whoOrdered    *player
+	discard       deck
+	flip          card
+	leftBower     card
+	goingItAlone  bool
 }
 
-func NewEuchreGameState(coord userInterface, gen messageGenerator) euchreGameState {
+func NewEuchreGameState(myAPI api, myMG messageGenerator) euchreGameState {
 	myDeck := newDeck()
 
 	myPlayers := make([]*player, NumPlayers)
@@ -66,9 +66,9 @@ func NewEuchreGameState(coord userInterface, gen messageGenerator) euchreGameSta
 		CurrentPlayer: myPlayers[1],
 		evenTeamScore: 0,
 		oddTeamScore:  0,
-		UI:            coord,
-		Messages:      gen,
 		trump:         undefined,
+		API:           myAPI,
+		Messages:      myMG,
 	}
 
 	return myGameState
@@ -148,14 +148,14 @@ func (gs *euchreGameState) OfferTheFlippedCard() (pickedUp bool) {
 			gs.playerOrderedSuit(*gs.CurrentPlayer, gs.flip.suit)
 			pickedUp = true
 			message = gs.Messages.PlayerOrderedSuit(gs.CurrentPlayer.ID, gs.trump)
-			gs.UI.Broadcast(message)
+			gs.API.Broadcast(message)
 			return
 		case "3":
 			gs.playerOrderedSuit(*gs.CurrentPlayer, gs.flip.suit)
 			pickedUp = true
 			gs.goingItAlone = true
 			message = gs.Messages.PlayerOrderedSuitAndGoingAlone(gs.CurrentPlayer.ID, gs.trump)
-			gs.UI.Broadcast(message)
+			gs.API.Broadcast(message)
 			return
 		default:
 			log.Fatal("Player sent invalid response and it was accepted. This should never happen!!")
@@ -193,7 +193,7 @@ func (gs *euchreGameState) EstablishTrump() {
 			return
 		}
 		if gs.CurrentPlayer.ID == gs.CurrentDealer.ID {
-			gs.UI.MessagePlayer(gs.CurrentDealer.ID, gs.Messages.DealerMustOrder())
+			gs.API.MessagePlayer(gs.CurrentDealer.ID, gs.Messages.DealerMustOrder())
 		} else {
 			gs.nextPlayer()
 		}
@@ -239,7 +239,7 @@ func (gs *euchreGameState) askPlayerToOrderOrPass() (pass bool) {
 	} else {
 		message = gs.Messages.PlayerOrderedSuit(gs.CurrentPlayer.ID, responseSuits[response])
 	}
-	gs.UI.Broadcast(message)
+	gs.API.Broadcast(message)
 
 	return
 }
@@ -264,7 +264,7 @@ func (gs *euchreGameState) askPlayerToPlayCard(firstPlayer bool, cardLead card) 
 		log.Fatalln("Unable to get valid card cast out of validResponses map")
 	}
 	// REMOVE
-	time.Sleep(100 * time.Millisecond)
+	// time.Sleep(500 * time.Millisecond)
 	return play{gs.CurrentPlayer, valueCard}
 }
 
@@ -285,7 +285,7 @@ func (gs *euchreGameState) Play5Tricks() {
 		}
 
 		message := gs.Messages.TricksSoFar(evenScore, oddScore)
-		gs.UI.Broadcast(message)
+		gs.API.Broadcast(message)
 		log.Println("Even Trick Score ", evenScore, " | Odd Trick Score", oddScore)
 
 		// Give the winner control of the next trick
@@ -296,7 +296,7 @@ func (gs *euchreGameState) Play5Tricks() {
 	gs.goingItAlone = false
 
 	message := gs.Messages.UpdateScore(gs.evenTeamScore, gs.oddTeamScore)
-	gs.UI.Broadcast(message)
+	gs.API.Broadcast(message)
 
 	log.Printf("Even Score: %d  Odd Score %d \n", gs.evenTeamScore, gs.oddTeamScore)
 	if gs.GameOver() {
@@ -307,7 +307,7 @@ func (gs *euchreGameState) Play5Tricks() {
 			winner = "Odd"
 		}
 		message = gs.Messages.GameOver(winner)
-		gs.UI.Broadcast(message)
+		gs.API.Broadcast(message)
 	}
 }
 
@@ -332,7 +332,7 @@ func (gs *euchreGameState) playTrick() play {
 		// Get valid card from player
 		for {
 			message := gs.Messages.PlayedSoFar(plays)
-			gs.UI.Broadcast(message)
+			gs.API.Broadcast(message)
 
 			currentPlay := gs.askPlayerToPlayCard(false, cardLead)
 			log.Println(currentPlay)
@@ -344,7 +344,7 @@ func (gs *euchreGameState) playTrick() play {
 				break
 			}
 			log.Println("Player ", gs.CurrentPlayer.ID, " played invalid card.")
-			gs.UI.MessagePlayer(gs.CurrentPlayer.ID, gs.Messages.InvalidCard())
+			gs.API.MessagePlayer(gs.CurrentPlayer.ID, gs.Messages.InvalidCard())
 		}
 
 	}
@@ -379,7 +379,7 @@ func (gs *euchreGameState) nextPlayer() {
 
 		lonePlayerID := gs.whoOrdered.ID
 		lonePlayerPartner := (lonePlayerID + 2) % NumPlayers
-		log.Println("Lone Player ", lonePlayerID, " Partner ", lonePlayerPartner)
+		// log.Println("Lone Player ", lonePlayerID, " Partner ", lonePlayerPartner)
 
 		if gs.CurrentPlayer.ID == lonePlayerPartner {
 			gs.CurrentPlayer = gs.players[nextPlayerID(*gs.CurrentPlayer)]
@@ -570,20 +570,47 @@ func (gs euchreGameState) validPlays(firstPlayer bool, cardLead card) []card {
 	}
 }
 
+func unpackJson(message string) string {
+	env := Envelope{}
+
+	err := json.Unmarshal([]byte(message), &env)
+	if err != nil {
+		log.Println("Unable to unpack json")
+		return ""
+	}
+
+	mapData, ok := env.Data.(map[string]any)
+	if !ok {
+		log.Println("Unable to unpack json into map")
+		return ""
+	}
+
+	res, ok := mapData["response"]
+	if !ok {
+		log.Println("Response not found in message")
+		return ""
+	}
+
+	sres := fmt.Sprint(res)
+
+	return sres
+}
+
 // getValidResponse is an infinite loop will not return until player gives a valid response
 // The response string that is returned will always be a valid key of the validResponses map that is passed in
 func (gs euchreGameState) getValidResponse(playerID int, message string, validResponses map[string]any) string {
 	for {
-		response := gs.UI.AskPlayerForX(playerID, message)
+		response := gs.API.AskPlayerForX(playerID, message)
 		response = strings.TrimSpace(response)
 
-		log.Println("RESPONSE:  ", response)
+		//Unpack json here
+		res := unpackJson(response)
 
-		_, ok := validResponses[response]
+		_, ok := validResponses[res]
 		if !ok {
-			gs.UI.MessagePlayer(playerID, "##############\nInvalid input.\n##############")
+			gs.API.MessagePlayer(playerID, gs.Messages.InvalidInput())
 		} else {
-			return response
+			return res
 		}
 	}
 }
