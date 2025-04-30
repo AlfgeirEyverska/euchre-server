@@ -18,11 +18,11 @@ type api interface {
 type messageGenerator interface {
 	InvalidCard() string
 	InvalidInput() string
-	PlayCard(int, suit, card, deck) string
+	PlayCard(int, suit, card, deck, deck) string
 	DealerDiscard(int, suit, card, deck) string
 	PickUpOrPass(int, suit, card, deck) string
 	OrderOrPass(int, suit, card, deck) string
-	GoItAlone(int) string
+	GoItAlone(int, suit, card, deck) string
 	DealerMustOrder() string
 	PlayedSoFar([]play) string
 	TricksSoFar(int, int) string
@@ -134,7 +134,8 @@ func (gs *euchreGameState) OfferTheFlippedCard() (pickedUp bool) {
 
 	for i := 0; i < NumPlayers; i++ {
 
-		validResponses := map[string]any{"1": "Pass", "2": "Pick It Up", "3": "Pick It Up and Go It Alone"}
+		validResponses := map[string]any{"1": "Pass", "2": "Pick It Up"}
+		// validResponses := map[string]any{"1": "Pass", "2": "Pick It Up", "3": "Pick It Up and Go It Alone"}
 
 		message := gs.Messages.PickUpOrPass(gs.CurrentPlayer.ID, gs.trump, gs.flip, gs.CurrentPlayer.hand)
 		response := gs.getValidResponse(gs.CurrentPlayer.ID, message, validResponses)
@@ -147,20 +148,15 @@ func (gs *euchreGameState) OfferTheFlippedCard() (pickedUp bool) {
 		case "2":
 			gs.playerOrderedSuit(*gs.CurrentPlayer, gs.flip.suit)
 			pickedUp = true
-			message = gs.Messages.PlayerOrderedSuit(gs.CurrentPlayer.ID, gs.trump)
-			gs.API.Broadcast(message)
-			return
-		case "3":
-			gs.playerOrderedSuit(*gs.CurrentPlayer, gs.flip.suit)
-			pickedUp = true
-			gs.goingItAlone = true
-			message = gs.Messages.PlayerOrderedSuitAndGoingAlone(gs.CurrentPlayer.ID, gs.trump)
-			gs.API.Broadcast(message)
+			gs.askPlayerIfGoingAlone()
+			// message = gs.Messages.PlayerOrderedSuit(gs.CurrentPlayer.ID, gs.trump)
+			// gs.API.Broadcast(message)
 			return
 		default:
 			log.Fatal("Player sent invalid response and it was accepted. This should never happen!!")
 		}
 	}
+
 	pickedUp = false
 	return
 }
@@ -226,22 +222,41 @@ func (gs *euchreGameState) askPlayerToOrderOrPass() (pass bool) {
 	pass = false
 	gs.playerOrderedSuit(*gs.CurrentPlayer, responseSuits[response])
 
-	message = gs.Messages.GoItAlone(gs.CurrentPlayer.ID)
-	validAloneResponses := map[string]any{"1": "Yes", "2": "No"}
+	// message = gs.Messages.GoItAlone(gs.CurrentPlayer.ID, gs.trump, gs.flip, gs.CurrentPlayer.hand)
+	// validAloneResponses := map[string]any{"1": "Yes", "2": "No"}
 
-	aloneResponse := gs.getValidResponse(gs.CurrentPlayer.ID, message, validAloneResponses)
-	log.Println("AloneResponse ", aloneResponse)
+	// aloneResponse := gs.getValidResponse(gs.CurrentPlayer.ID, message, validAloneResponses)
+	// log.Println("AloneResponse ", aloneResponse)
 
-	gs.goingItAlone = aloneResponse == "1"
+	// gs.goingItAlone = aloneResponse == "1"
 
-	if gs.goingItAlone {
-		message = gs.Messages.PlayerOrderedSuitAndGoingAlone(gs.CurrentPlayer.ID, responseSuits[response])
-	} else {
-		message = gs.Messages.PlayerOrderedSuit(gs.CurrentPlayer.ID, responseSuits[response])
-	}
-	gs.API.Broadcast(message)
+	// if gs.goingItAlone {
+	// 	message = gs.Messages.PlayerOrderedSuitAndGoingAlone(gs.CurrentPlayer.ID, responseSuits[response])
+	// } else {
+	// 	message = gs.Messages.PlayerOrderedSuit(gs.CurrentPlayer.ID, responseSuits[response])
+	// }
+	// gs.API.Broadcast(message)
+
+	gs.askPlayerIfGoingAlone()
 
 	return
+}
+
+func (gs *euchreGameState) askPlayerIfGoingAlone() {
+	message := gs.Messages.GoItAlone(gs.CurrentPlayer.ID, gs.trump, gs.flip, gs.CurrentPlayer.hand)
+	validResponses := map[string]any{"1": "Yes", "2": "No"}
+
+	response := gs.getValidResponse(gs.CurrentPlayer.ID, message, validResponses)
+	log.Println("AloneResponse ", response)
+
+	gs.goingItAlone = response == "1"
+
+	if gs.goingItAlone {
+		message = gs.Messages.PlayerOrderedSuitAndGoingAlone(gs.CurrentPlayer.ID, gs.trump)
+	} else {
+		message = gs.Messages.PlayerOrderedSuit(gs.CurrentPlayer.ID, gs.trump)
+	}
+	gs.API.Broadcast(message)
 }
 
 func (gs *euchreGameState) askPlayerToPlayCard(firstPlayer bool, cardLead card) play {
@@ -255,7 +270,7 @@ func (gs *euchreGameState) askPlayerToPlayCard(firstPlayer bool, cardLead card) 
 		validResponses[prettyIdx] = v
 	}
 
-	message := gs.Messages.PlayCard(gs.CurrentPlayer.ID, gs.trump, gs.flip, playableCards)
+	message := gs.Messages.PlayCard(gs.CurrentPlayer.ID, gs.trump, gs.flip, gs.CurrentPlayer.hand, playableCards)
 	response := gs.getValidResponse(gs.CurrentPlayer.ID, message, validResponses)
 
 	value := validResponses[response]

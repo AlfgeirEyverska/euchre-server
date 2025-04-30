@@ -10,16 +10,9 @@ import (
 var id int
 
 type Envelope struct {
-	Type string          `json:"type"`
-	Data json.RawMessage `json:"data"`
-}
-
-type playerInfo struct {
-	PlayerID int      `json:"playerID"`
-	Trump    string   `json:"trump"`
-	Flip     string   `json:"flip"`
-	Hand     []string `json:"hand"`
-	Message  string   `json:"message"`
+	Type    string          `json:"type"`
+	Data    json.RawMessage `json:"data"`
+	Message string          `json:"message"`
 }
 
 type suitOrdered struct {
@@ -27,27 +20,27 @@ type suitOrdered struct {
 	Trump      string `json:"trump"`
 	Action     string `json:"action"`
 	GoingAlone bool   `json:"goingAlone"`
-	Message    string `json:"message"`
+}
+
+type playerInfo struct {
+	PlayerID int      `json:"playerID"`
+	Trump    string   `json:"trump"`
+	Flip     string   `json:"flip"`
+	Hand     []string `json:"hand"`
+}
+
+type requestForResponse struct {
+	Info     playerInfo     `json:"playerInfo"`
+	ValidRes map[int]string `json:"validResponses"`
 }
 
 type dealerUpdate struct {
-	Message string `json:"message"`
-	Dealer  int    `json:"dealer"`
+	Dealer int `json:"dealer"`
 }
 
 type playJSON struct {
 	PlayerID   int    `json:"playerID"`
 	CardPlayed string `json:"played"`
-}
-
-type goItAlone struct {
-	Message  string         `json:"message"`
-	ValidRes map[int]string `json:"validResponses"`
-}
-
-type messageInfo struct {
-	Info     playerInfo     `json:"playerInfo"`
-	ValidRes map[int]string `json:"validResponses"`
 }
 
 func handleDealerUpdate(buf json.RawMessage) dealerUpdate {
@@ -60,8 +53,8 @@ func handleDealerUpdate(buf json.RawMessage) dealerUpdate {
 	return message
 }
 
-func handlePickUpOrPass(buf json.RawMessage) messageInfo {
-	var message messageInfo
+func handlePickUpOrPass(buf json.RawMessage) requestForResponse {
+	var message requestForResponse
 	err := json.Unmarshal(buf, &message)
 	if err != nil {
 		log.Fatalln(err)
@@ -70,13 +63,43 @@ func handlePickUpOrPass(buf json.RawMessage) messageInfo {
 	return message
 }
 
-func handleOrderOrPass(buf json.RawMessage) messageInfo {
-	message := messageInfo{}
+func handleOrderOrPass(buf json.RawMessage) requestForResponse {
+	message := requestForResponse{}
 	err := json.Unmarshal(buf, &message)
 	if err != nil {
 		log.Fatalln(err)
 	}
 	log.Println(message.Info)
+	return message
+}
+
+func handlePlayCard(buf json.RawMessage) requestForResponse {
+	message := requestForResponse{}
+	err := json.Unmarshal(buf, &message)
+	if err != nil {
+		log.Fatalln(err)
+	}
+	log.Println(message.ValidRes)
+	return message
+}
+
+func handleDealerDiscard(buf json.RawMessage) requestForResponse {
+	message := requestForResponse{}
+	err := json.Unmarshal(buf, &message)
+	if err != nil {
+		log.Fatalln(err)
+	}
+	log.Println(message)
+	return message
+}
+
+func handleGoItAlone(buf json.RawMessage) requestForResponse {
+	message := requestForResponse{}
+	err := json.Unmarshal(buf, &message)
+	if err != nil {
+		log.Fatalln(err)
+	}
+	log.Println(message)
 	return message
 }
 
@@ -98,23 +121,14 @@ func handleConnectionCheck(writer net.Conn) {
 	}
 }
 
-func handlePlayCard(buf json.RawMessage) messageInfo {
-	message := messageInfo{}
-	err := json.Unmarshal(buf, &message)
-	if err != nil {
-		log.Fatalln(err)
-	}
-	log.Println(message.ValidRes)
-	return message
-}
-
-func handleSuitOrdered(buf json.RawMessage) {
+func handleSuitOrdered(buf json.RawMessage) suitOrdered {
 	message := suitOrdered{}
 	err := json.Unmarshal(buf, &message)
 	if err != nil {
 		log.Fatalln(err)
 	}
-	log.Println(message.Message)
+	log.Println(message.Trump)
+	return message
 }
 
 func handlePlays(buf json.RawMessage) {
@@ -124,26 +138,6 @@ func handlePlays(buf json.RawMessage) {
 		log.Fatalln(err)
 	}
 	log.Println(message)
-}
-
-func handleDealerDiscard(buf json.RawMessage) messageInfo {
-	message := messageInfo{}
-	err := json.Unmarshal(buf, &message)
-	if err != nil {
-		log.Fatalln(err)
-	}
-	log.Println(message)
-	return message
-}
-
-func handleGoItAlone(buf json.RawMessage) goItAlone {
-	message := goItAlone{}
-	err := json.Unmarshal(buf, &message)
-	if err != nil {
-		log.Fatalln(err)
-	}
-	log.Println(message)
-	return message
 }
 
 func handleTrickScore(buf json.RawMessage) {
@@ -186,10 +180,8 @@ func handleGameOver(buf json.RawMessage) int {
 		log.Fatalln("Could not determine winner")
 	}
 	if winner == "Even" {
-		// fmt.Println("I think even won")
 		return 0
 	}
-	// fmt.Println("I think odd won")
 	return 1
 }
 

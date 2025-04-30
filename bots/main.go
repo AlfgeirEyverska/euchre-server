@@ -38,7 +38,6 @@ gameLoop:
 		for i := 0; i < numPlayers; i++ {
 
 			doneChan := make(chan int, 1)
-			// defer close(doneChan)
 
 			doneChans = append(doneChans, doneChan)
 			if i%2 == 0 {
@@ -69,8 +68,8 @@ gameLoop:
 			randomScore++
 		}
 		log.Println("Game Over!!")
-		game++
 
+		game++
 		// time.Sleep(1000 * time.Millisecond)
 	}
 

@@ -12,7 +12,7 @@ def encode_response(message_type, data):
     response = response.encode()
     return response
 
-def play():
+def play(id):
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
 
         sock.connect((HOST, PORT))
@@ -29,64 +29,80 @@ def play():
             
             if not line:
                 break
-
+            
             message = json.loads(line)
+
+            if id == 0:
+                print("#"*50)
+                str_message = json.dumps(message, indent=4, ensure_ascii=False)
+                # str_message.encode()
+                print(str_message)
+                print("#"*50)
 
             match message["type"]:
                 case "connectionCheck":
-                    print(message["data"])
+                    # print(message["data"])
                     response = encode_response(message["type"], "Pong")
                     sock.send(response)
                 case "pickUpOrPass":
-                    print(message["data"])
+                    # print(message["data"])
                     response = encode_response(message["type"], 1)
                     sock.send(response)
                     # handlePickUpOrPass(message.Data)
                 case "orderOrPass":
-                    print(message["data"])
+                    # print(message["data"])
                     response = encode_response(message["type"], 2)
                     sock.send(response)
                     # handleOrderOrPass(message.Data)
                 case "dealerDiscard":
-                    print(message["data"])
+                    # print(message["data"])
                     response = encode_response(message["type"], 1)
                     sock.send(response)
                     # handleDealerDiscard(message.Data)
                 case "playCard":
-                    print(message["data"])
+                    # print(message["data"])
                     response = encode_response(message["type"], 1)
                     sock.send(response)                    # handlePlayCard(message.Data)
                 case "goItAlone":
-                    print(message["data"])
+                    # print(message["data"])
                     response = encode_response(message["type"], 2)
                     sock.send(response)                    # handleGoItAlone(message.Data)
                 case "playerID":
-                    print(message["data"])
+                    pass
+                    # print(message["data"])
                     # handlePlayerID(message.Data)
                 case "dealerUpdate":
-                    print(message["data"])
+                    pass
+                    # print(message["data"])
                     # handleDealerUpdate(message.Data)
                 case "suitOrdered":
-                    print(message["data"])
+                    pass
+                    # print(message["data"])
                     # handleSuitOrdered(message.Data)
                 case "plays":
-                    print(message["data"])
+                    pass
+                    # print(message["data"])
                     # handlePlays(message.Data)
                 case "trickScore":
-                    print(message["data"])
+                    pass
+                    # print(message["data"])
                     # handleTrickScore(message.Data)
                 case "updateScore":
-                    print(message["data"])
+                    pass
+                    # print(message["data"])
                     # handleUpdateScore(message.Data)
                 case "error":
-                    print(message["data"])
+                    pass
+                    # print(message["data"])
                     # handleError(message.Data)
                 case "gameOver":
-                    print(message["data"])
+                    pass
+                    # print(message["data"])
                     # res = handleGameOver(message.Data)
                 case _:
                     print("Unknown message type: ", message["type"])
 
+            # time.sleep(1)
             time.sleep(0.05)
 
 
@@ -94,7 +110,7 @@ def play():
 if __name__=="__main__":
     players = []
     for i in range(4):
-        p = Process(target=play)
+        p = Process(target=play, args=(i,))
         players.append(p)
         p.start()
     
