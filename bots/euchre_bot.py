@@ -33,11 +33,11 @@ def play(id):
             message = json.loads(line)
 
             if id == 0:
-                print("#"*50)
+                print("#"*100)
                 str_message = json.dumps(message, indent=4, ensure_ascii=False)
                 # str_message.encode()
                 print(str_message)
-                print("#"*50)
+                print("#"*100)
 
             match message["type"]:
                 case "connectionCheck":

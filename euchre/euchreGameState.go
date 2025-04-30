@@ -365,7 +365,6 @@ func nextPlayerID(p player) int {
 	return (p.ID + 1) % NumPlayers
 }
 
-// TODO: debug player progression after go it alone and after dealer change.
 func (gs *euchreGameState) NextDealer() {
 	gs.CurrentDealer = gs.players[nextPlayerID(*gs.CurrentDealer)]
 	// For some reason this broke the player progression
@@ -380,7 +379,6 @@ func (gs *euchreGameState) nextPlayer() {
 
 		lonePlayerID := gs.whoOrdered.ID
 		lonePlayerPartner := (lonePlayerID + 2) % NumPlayers
-		// log.Println("Lone Player ", lonePlayerID, " Partner ", lonePlayerPartner)
 
 		if gs.CurrentPlayer.ID == lonePlayerPartner {
 			gs.CurrentPlayer = gs.players[nextPlayerID(*gs.CurrentPlayer)]
@@ -400,7 +398,6 @@ func (gs euchreGameState) numPoints(evenScore int, oddScore int) int {
 
 	if gs.goingItAlone {
 		if gs.whoOrdered.ID%2 == 0 {
-			// even team
 			if evenScore == 5 {
 				return 4
 			}
@@ -423,7 +420,6 @@ func (gs euchreGameState) numPoints(evenScore int, oddScore int) int {
 		}
 	} else {
 		if gs.whoOrdered.ID%2 == 0 {
-			// even team
 			if evenScore == 5 {
 				return 2
 			}
