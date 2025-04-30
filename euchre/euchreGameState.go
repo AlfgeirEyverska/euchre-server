@@ -2,9 +2,9 @@ package euchre
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
-	"strings"
 )
 
 const targetScore = 10
@@ -18,11 +18,11 @@ type api interface {
 type messageGenerator interface {
 	InvalidCard() string
 	InvalidInput() string
-	PlayCard(int, suit, card, deck, deck) string
-	DealerDiscard(int, suit, card, deck) string
-	PickUpOrPass(int, suit, card, deck) string
-	OrderOrPass(int, suit, card, deck) string
-	GoItAlone(int, suit, card, deck) string
+	PlayCard(int, suit, card, deck, deck, map[int]string) string
+	DealerDiscard(int, suit, card, deck, map[int]string) string
+	PickUpOrPass(int, suit, card, deck, map[int]string) string
+	OrderOrPass(int, suit, card, deck, map[int]string) string
+	GoItAlone(int, suit, card, deck, map[int]string) string
 	DealerMustOrder() string
 	PlayedSoFar([]play) string
 	TricksSoFar(int, int) string
@@ -132,29 +132,24 @@ func (gs *euchreGameState) Deal() {
 // sets trump, goingitalone, and whoOrdered and returns true
 func (gs *euchreGameState) OfferTheFlippedCard() (pickedUp bool) {
 
+	validResponses := map[int]string{1: "Pass", 2: "Pick It Up"}
+
 	for i := 0; i < NumPlayers; i++ {
 
-		validResponses := map[string]any{"1": "Pass", "2": "Pick It Up"}
-		// validResponses := map[string]any{"1": "Pass", "2": "Pick It Up", "3": "Pick It Up and Go It Alone"}
-
-		message := gs.Messages.PickUpOrPass(gs.CurrentPlayer.ID, gs.trump, gs.flip, gs.CurrentPlayer.hand)
+		message := gs.Messages.PickUpOrPass(gs.CurrentPlayer.ID, gs.trump, gs.flip, gs.CurrentPlayer.hand, validResponses)
 		response := gs.getValidResponse(gs.CurrentPlayer.ID, message, validResponses)
 		log.Println("FlippedCardResponse ", response)
 
-		switch response {
-		case "1":
-			gs.nextPlayer()
-			continue
-		case "2":
+		if response == 2 {
 			gs.playerOrderedSuit(*gs.CurrentPlayer, gs.flip.suit)
 			pickedUp = true
 			gs.askPlayerIfGoingAlone()
-			// message = gs.Messages.PlayerOrderedSuit(gs.CurrentPlayer.ID, gs.trump)
-			// gs.API.Broadcast(message)
 			return
-		default:
-			log.Fatal("Player sent invalid response and it was accepted. This should never happen!!")
 		}
+
+		// getValidResponse ensures that if it wasn't "2" it is "1"
+		gs.nextPlayer()
+		continue
 	}
 
 	pickedUp = false
@@ -163,25 +158,28 @@ func (gs *euchreGameState) OfferTheFlippedCard() (pickedUp bool) {
 
 func (gs *euchreGameState) DealerDiscard() {
 
-	message := gs.Messages.DealerDiscard(gs.CurrentDealer.ID, gs.trump, gs.flip, gs.CurrentDealer.hand)
-
-	validResponses := make(map[string]any)
+	validResponses := make(map[int]string)
+	responseCards := make(map[int]card)
 	for i := range gs.CurrentDealer.hand {
-		validResponses[fmt.Sprint(i+1)] = gs.CurrentDealer.hand[i]
+		validResponses[i+1] = gs.CurrentDealer.hand[i].String()
+		responseCards[i+1] = gs.CurrentDealer.hand[i]
 	}
+
+	message := gs.Messages.DealerDiscard(gs.CurrentDealer.ID, gs.trump, gs.flip, gs.CurrentDealer.hand, validResponses)
 
 	response := gs.getValidResponse(gs.CurrentDealer.ID, message, validResponses)
 
-	discarded, ok := validResponses[response].(card)
+	discarded, ok := responseCards[response]
 	if !ok {
-		log.Fatalln("Unable to get valid card cast out of validResponses map")
+		log.Fatalln("Unable to get valid card out of responseCards map")
 	}
+
 	log.Println("Dealer discarded the ", discarded)
 	gs.CurrentDealer.hand.replace(discarded, gs.flip)
 	gs.discard.replace(gs.flip, discarded)
 }
 
-// EstablishTrump Ensures that someone orders trump.
+// EstablishTrump Ensures that someone orders trump by sticking the dealer if everyone passes.
 func (gs *euchreGameState) EstablishTrump() {
 	for {
 		pass := gs.askPlayerToOrderOrPass()
@@ -201,41 +199,26 @@ func (gs *euchreGameState) EstablishTrump() {
 func (gs *euchreGameState) askPlayerToOrderOrPass() (pass bool) {
 
 	rs := gs.flip.suit.remainingSuits()
-	validResponses := make(map[string]any)
-	responseSuits := make(map[string]suit)
-	validResponses["1"] = "Pass"
+	validResponses := make(map[int]string)
+	responseSuits := make(map[int]suit)
+	validResponses[1] = "Pass"
 	for i := 0; i < len(rs); i++ {
 		j := i + 2
-		validResponses[fmt.Sprint(j)] = fmt.Sprint(rs[i])
-		responseSuits[fmt.Sprint(j)] = rs[i]
+		validResponses[j] = fmt.Sprint(rs[i])
+		responseSuits[j] = rs[i]
 	}
 
-	message := gs.Messages.OrderOrPass(gs.CurrentPlayer.ID, gs.trump, gs.flip, gs.CurrentPlayer.hand)
+	message := gs.Messages.OrderOrPass(gs.CurrentPlayer.ID, gs.trump, gs.flip, gs.CurrentPlayer.hand, validResponses)
 
 	response := gs.getValidResponse(gs.CurrentPlayer.ID, message, validResponses)
 	log.Println("OrderOrPassResponse ", response)
 
-	if response == "1" {
+	if response == 1 {
 		pass = true
 		return
 	}
 	pass = false
 	gs.playerOrderedSuit(*gs.CurrentPlayer, responseSuits[response])
-
-	// message = gs.Messages.GoItAlone(gs.CurrentPlayer.ID, gs.trump, gs.flip, gs.CurrentPlayer.hand)
-	// validAloneResponses := map[string]any{"1": "Yes", "2": "No"}
-
-	// aloneResponse := gs.getValidResponse(gs.CurrentPlayer.ID, message, validAloneResponses)
-	// log.Println("AloneResponse ", aloneResponse)
-
-	// gs.goingItAlone = aloneResponse == "1"
-
-	// if gs.goingItAlone {
-	// 	message = gs.Messages.PlayerOrderedSuitAndGoingAlone(gs.CurrentPlayer.ID, responseSuits[response])
-	// } else {
-	// 	message = gs.Messages.PlayerOrderedSuit(gs.CurrentPlayer.ID, responseSuits[response])
-	// }
-	// gs.API.Broadcast(message)
 
 	gs.askPlayerIfGoingAlone()
 
@@ -243,13 +226,15 @@ func (gs *euchreGameState) askPlayerToOrderOrPass() (pass bool) {
 }
 
 func (gs *euchreGameState) askPlayerIfGoingAlone() {
-	message := gs.Messages.GoItAlone(gs.CurrentPlayer.ID, gs.trump, gs.flip, gs.CurrentPlayer.hand)
-	validResponses := map[string]any{"1": "Yes", "2": "No"}
+
+	validResponses := map[int]string{1: "Yes", 2: "No"}
+
+	message := gs.Messages.GoItAlone(gs.CurrentPlayer.ID, gs.trump, gs.flip, gs.CurrentPlayer.hand, validResponses)
 
 	response := gs.getValidResponse(gs.CurrentPlayer.ID, message, validResponses)
 	log.Println("AloneResponse ", response)
 
-	gs.goingItAlone = response == "1"
+	gs.goingItAlone = response == 1
 
 	if gs.goingItAlone {
 		message = gs.Messages.PlayerOrderedSuitAndGoingAlone(gs.CurrentPlayer.ID, gs.trump)
@@ -261,22 +246,23 @@ func (gs *euchreGameState) askPlayerIfGoingAlone() {
 
 func (gs *euchreGameState) askPlayerToPlayCard(firstPlayer bool, cardLead card) play {
 
-	validResponses := make(map[string]any)
+	validResponses := make(map[int]string)
+	responseCards := make(map[int]card)
 
 	playableCards := gs.validPlays(firstPlayer, cardLead)
 
 	for i, v := range playableCards {
-		prettyIdx := fmt.Sprint(i + 1)
-		validResponses[prettyIdx] = v
+		prettyIdx := i + 1
+		validResponses[prettyIdx] = v.String()
+		responseCards[prettyIdx] = v
 	}
 
-	message := gs.Messages.PlayCard(gs.CurrentPlayer.ID, gs.trump, gs.flip, gs.CurrentPlayer.hand, playableCards)
+	message := gs.Messages.PlayCard(gs.CurrentPlayer.ID, gs.trump, gs.flip, gs.CurrentPlayer.hand, playableCards, validResponses)
 	response := gs.getValidResponse(gs.CurrentPlayer.ID, message, validResponses)
 
-	value := validResponses[response]
-	valueCard, ok := value.(card)
+	valueCard, ok := responseCards[response]
 	if !ok {
-		log.Fatalln("Unable to get valid card cast out of validResponses map")
+		log.Fatalln("Unable to get valid card out of responseCards map")
 	}
 	// REMOVE
 	// time.Sleep(500 * time.Millisecond)
@@ -585,48 +571,47 @@ func (gs euchreGameState) validPlays(firstPlayer bool, cardLead card) []card {
 	}
 }
 
-func unpackJson(message string) string {
-	env := Envelope{}
+type responseEnvelope struct {
+	Type string         `json:"type"`
+	Data map[string]int `json:"data"`
+}
 
-	err := json.Unmarshal([]byte(message), &env)
+func unpackJson(message string) (int, error) {
+	responseEnv := responseEnvelope{}
+
+	err := json.Unmarshal([]byte(message), &responseEnv)
 	if err != nil {
 		log.Println("Unable to unpack json")
-		return ""
+		return 0, errors.New("unable to unmarshal response envelope")
 	}
 
-	mapData, ok := env.Data.(map[string]any)
-	if !ok {
-		log.Println("Unable to unpack json into map")
-		return ""
-	}
-
-	res, ok := mapData["response"]
+	res, ok := responseEnv.Data["response"]
 	if !ok {
 		log.Println("Response not found in message")
-		return ""
+		return 0, errors.New("\"response\" not found in message")
 	}
 
-	sres := fmt.Sprint(res)
-
-	return sres
+	return res, nil
 }
 
 // getValidResponse is an infinite loop will not return until player gives a valid response
 // The response string that is returned will always be a valid key of the validResponses map that is passed in
-func (gs euchreGameState) getValidResponse(playerID int, message string, validResponses map[string]any) string {
+func (gs euchreGameState) getValidResponse(playerID int, message string, validResponses map[int]string) int {
 	for {
 		response := gs.API.AskPlayerForX(playerID, message)
-		response = strings.TrimSpace(response)
 
-		//Unpack json here
-		res := unpackJson(response)
+		res, err := unpackJson(response)
+		if err != nil {
+			gs.API.MessagePlayer(playerID, gs.Messages.InvalidInput())
+			continue
+		}
 
 		_, ok := validResponses[res]
 		if !ok {
 			gs.API.MessagePlayer(playerID, gs.Messages.InvalidInput())
-		} else {
-			return res
+			continue
 		}
+		return res
 	}
 }
 

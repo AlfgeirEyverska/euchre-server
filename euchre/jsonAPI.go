@@ -157,15 +157,10 @@ func (api JsonAPI) PlayerOrderedSuitAndGoingAlone(playerID int, trump suit) stri
 
 // Requests for Response
 
-func (api JsonAPI) PlayCard(playerID int, trump suit, flip card, hand deck, validCards deck) string {
+func (api JsonAPI) PlayCard(playerID int, trump suit, flip card, hand deck, validCards deck, validResponses map[int]string) string {
 	msg := "It is your turn. What would you like to play?"
 
 	pi := playerInfo{playerID, trump.String(), flip.String(), handToStrings(hand)}
-
-	validResponses := make(map[int]string)
-	for i, v := range validCards {
-		validResponses[i+1] = v.String()
-	}
 
 	data := requestForResponse{Info: pi, ValidRes: validResponses}
 
@@ -174,16 +169,11 @@ func (api JsonAPI) PlayCard(playerID int, trump suit, flip card, hand deck, vali
 	return marshalOrPanic(message)
 }
 
-func (api JsonAPI) DealerDiscard(playerID int, trump suit, flip card, hand deck) string {
+func (api JsonAPI) DealerDiscard(playerID int, trump suit, flip card, hand deck, validResponses map[int]string) string {
 
 	msg := "You must discard."
 
 	pi := playerInfo{playerID, trump.String(), flip.String(), handToStrings(hand)}
-
-	validResponses := make(map[int]string)
-	for i, v := range hand {
-		validResponses[i+1] = v.String()
-	}
 
 	data := requestForResponse{pi, validResponses}
 
@@ -192,7 +182,7 @@ func (api JsonAPI) DealerDiscard(playerID int, trump suit, flip card, hand deck)
 	return marshalOrPanic(message)
 }
 
-func (api JsonAPI) PickUpOrPass(playerID int, trump suit, flip card, hand deck) string {
+func (api JsonAPI) PickUpOrPass(playerID int, trump suit, flip card, hand deck, validResponses map[int]string) string {
 
 	msg := "Tell the dealer to pick it up or pass."
 
@@ -203,12 +193,6 @@ func (api JsonAPI) PickUpOrPass(playerID int, trump suit, flip card, hand deck) 
 		Hand:     handToStrings(hand),
 	}
 
-	validResponses := map[int]string{
-		1: "Pass",
-		2: "Pick It Up",
-		// 3: "Pick It Up and Go It Alone",
-	}
-
 	data := requestForResponse{pi, validResponses}
 
 	message := Envelope{Type: "pickUpOrPass", Data: data, Message: msg}
@@ -216,7 +200,7 @@ func (api JsonAPI) PickUpOrPass(playerID int, trump suit, flip card, hand deck) 
 	return marshalOrPanic(message)
 }
 
-func (api JsonAPI) OrderOrPass(playerID int, trump suit, flip card, hand deck) string {
+func (api JsonAPI) OrderOrPass(playerID int, trump suit, flip card, hand deck, validResponses map[int]string) string {
 
 	msg := fmt.Sprint(flip.suit, "s are out. Order a suit or pass.")
 
@@ -227,25 +211,13 @@ func (api JsonAPI) OrderOrPass(playerID int, trump suit, flip card, hand deck) s
 		Hand:     handToStrings(hand),
 	}
 
-	rs := flip.suit.remainingSuits()
-
-	validResponses := make(map[int]string)
-	responseSuits := make(map[int]suit)
-
-	validResponses[1] = "Pass"
-	for i := 0; i < len(rs); i++ {
-		j := i + 2
-		validResponses[j] = fmt.Sprint(rs[i])
-		responseSuits[j] = rs[i]
-	}
-
 	data := requestForResponse{pi, validResponses}
 
 	message := Envelope{Type: "orderOrPass", Data: data, Message: msg}
 	return marshalOrPanic(message)
 }
 
-func (api JsonAPI) GoItAlone(playerID int, trump suit, flip card, hand deck) string {
+func (api JsonAPI) GoItAlone(playerID int, trump suit, flip card, hand deck, validResponses map[int]string) string {
 
 	msg := "Would you like to go it alone?"
 
@@ -255,8 +227,6 @@ func (api JsonAPI) GoItAlone(playerID int, trump suit, flip card, hand deck) str
 		Flip:     flip.String(),
 		Hand:     handToStrings(hand),
 	}
-
-	validResponses := map[int]string{1: "Yes", 2: "No"}
 
 	data := requestForResponse{pi, validResponses}
 
