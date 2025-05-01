@@ -33,7 +33,7 @@ func PlayEuchre(ctx context.Context, gameState euchreGameState) {
 				gameState.EstablishTrump()
 			}
 
-			gameState.ResetFirstPlayer()
+			// gameState.ResetFirstPlayer()
 
 			log.Println("Play 5 tricks!")
 			gameState.Play5Tricks()

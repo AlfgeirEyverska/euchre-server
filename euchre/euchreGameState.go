@@ -142,6 +142,7 @@ func (gs *euchreGameState) OfferTheFlippedCard() (pickedUp bool) {
 		message := gs.Messages.PickUpOrPass(gs.CurrentPlayer.ID, gs.trump, gs.flip, gs.CurrentPlayer.hand, validResponses)
 		response := gs.getValidResponse(gs.CurrentPlayer.ID, message, validResponses)
 		log.Println("FlippedCardResponse ", response)
+		// TODO: Add broadcast for flipped card response
 
 		if response == 2 {
 			gs.playerOrderedSuit(*gs.CurrentPlayer, gs.flip.suit)
@@ -275,6 +276,8 @@ func (gs *euchreGameState) askPlayerToPlayCard(firstPlayer bool, cardLead card) 
 func (gs *euchreGameState) Play5Tricks() {
 	evenScore := 0
 	oddScore := 0
+
+	gs.ResetFirstPlayer()
 
 	for trickN := 0; trickN < 5; trickN++ {
 
@@ -470,6 +473,9 @@ func (gs *euchreGameState) playerOrderedSuit(p player, s suit) {
 	gs.whoOrdered = &p
 	gs.trump = s
 	gs.leftBower = gs.getLeftBower()
+
+	// TODO: Fix resetting the first player. The bots were able to go it alone and it skipped my partner instead
+	// gs.ResetFirstPlayer()
 	log.Println(gs.trump, "s are trump.")
 }
 

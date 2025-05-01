@@ -8,8 +8,9 @@ import (
 	"log"
 	"math/rand"
 	"net"
-	"time"
 )
+
+// TODO: there seems to be a bug in who gets stuck with choosing the suit and a separate one where the dealer can call suit before players pass
 
 func sendRandomResponse(messageType string, validResponses map[int]string, writer net.Conn) {
 
@@ -120,7 +121,7 @@ func RandomBot(doneChan chan int, ctx context.Context, cancel context.CancelFunc
 
 		}
 
-		time.Sleep(1000 * time.Millisecond)
+		// time.Sleep(1000 * time.Millisecond)
 
 	}
 }

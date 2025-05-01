@@ -53,12 +53,13 @@ func getInput() int {
 func handleRFR(message client.Envelope, conn net.Conn) error {
 	rfr := client.HandleRequestForResponse(message.Data)
 
-	fmt.Printf("%s\n", rfr.Info)
+	request := fmt.Sprintf("%s\n", rfr.Info)
 
-	fmt.Printf("\n%s\n\n", message.Message)
+	request += fmt.Sprintf("\n%s\n\n", message.Message)
 
-	fmt.Printf("%s\n\n", validResponsesString(rfr.ValidRes))
+	request += fmt.Sprintf("%s\n\n", validResponsesString(rfr.ValidRes))
 
+	// TODO: I am in the middle of implementing the trickleUpdates and need to handle this next piece and returning the above request string
 	response := getInput()
 
 	err := sendResponse(message.Type, response, conn)
@@ -68,11 +69,30 @@ func handleRFR(message client.Envelope, conn net.Conn) error {
 	return nil
 }
 
-// TODO: Consider adding timers to the server's sends to space them out and ensure their order.
+func trickleUpdates(updateChan chan string, ctx context.Context, cancel context.CancelFunc) {
+
+	for {
+		select {
+		case <-ctx.Done():
+			fmt.Println("Something went wrong. Shutting down...")
+			return
+		case update, ok := <-updateChan:
+			if !ok {
+				// Game Over?
+				cancel()
+				return
+			}
+			fmt.Print(update)
+			time.Sleep(1000 * time.Millisecond)
+		}
+	}
+
+}
+
+// TODO: fix the error where a pass was misinterpreted as a pick it up
 // TODO: Consider adding broadcast for pass or logic to print a representation of passing.
 // TODO: Consider adding broadcast for who won the trick
 func handleMyConnection(ctx context.Context, cancel context.CancelFunc) {
-	// Connect yourself
 	conn, err := net.Dial("tcp", "localhost:8080")
 	if err != nil {
 		log.Println(err)
@@ -83,6 +103,8 @@ func handleMyConnection(ctx context.Context, cancel context.CancelFunc) {
 	client.SayHello(conn)
 
 	reader := bufio.NewReader(conn)
+	updateChan := make(chan string, 10)
+	defer close(updateChan)
 
 	for {
 		select {
@@ -253,7 +275,8 @@ func Play() {
 	for i := range 3 {
 		doneChan := make(chan int)
 		log.Println("Starting bot ", i)
-		go bots.LazyBot(doneChan, ctx, cancel)
+		go bots.RandomBot(doneChan, ctx, cancel)
+		// go bots.LazyBot(doneChan, ctx, cancel)
 		doneChans = append(doneChans, doneChan)
 	}
 
