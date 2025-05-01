@@ -127,6 +127,7 @@ func (gs *euchreGameState) Deal() {
 
 	gs.discard = burn
 	gs.flip = burn[0]
+	gs.trump = undefined
 	log.Println(gs.players)
 }
 
@@ -579,8 +580,10 @@ func unpackJson(message string) (int, error) {
 
 	err := json.Unmarshal([]byte(message), &responseEnv)
 	if err != nil {
-		log.Println("Unable to unpack json")
-		log.Println("Message:", responseEnv)
+		log.Println("\n\nUnable to unpack json")
+		log.Println("Raw Message: ", message)
+		log.Println("Message type: ", responseEnv.Type)
+		log.Println("Message data: ", responseEnv.Data)
 		return 0, errors.New("unable to unmarshal response envelope")
 	}
 

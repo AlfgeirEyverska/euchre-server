@@ -49,6 +49,8 @@ func handleMyConnection(ctx context.Context, cancel context.CancelFunc) {
 				return
 			}
 
+			fmt.Println(string(buf))
+
 			var message client.Envelope
 			err = json.Unmarshal(buf, &message)
 			if err != nil {
@@ -59,6 +61,11 @@ func handleMyConnection(ctx context.Context, cancel context.CancelFunc) {
 			fmt.Println(message.Type)
 			fmt.Println(string(message.Data))
 			fmt.Print(message.Message, "\n\n")
+
+			if message.Type == "connectionCheck" {
+				client.HandleConnectionCheck(conn)
+				continue
+			}
 
 			var response int
 			set := map[string]bool{"pickUpOrPass": true, "orderOrPass": true, "dealerDiscard": true, "playCard": true, "goItAlone": true}
@@ -107,7 +114,7 @@ func Play() {
 	for i := range 3 {
 		doneChan := make(chan int)
 		log.Println("Starting bot ", i)
-		go bots.RandomBot(doneChan, ctx, cancel)
+		go bots.LazyBot(doneChan, ctx, cancel)
 		doneChans = append(doneChans, doneChan)
 	}
 

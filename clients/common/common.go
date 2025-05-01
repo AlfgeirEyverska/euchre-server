@@ -218,5 +218,6 @@ func EncodeResponse(messageType string, data int) []byte {
 	if err != nil {
 		fmt.Println("Error:", err)
 	}
+	log.Println(string(message))
 	return message
 }
