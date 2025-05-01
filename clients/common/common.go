@@ -43,7 +43,7 @@ type playJSON struct {
 	CardPlayed string `json:"played"`
 }
 
-func handleDealerUpdate(buf json.RawMessage) dealerUpdate {
+func HandleDealerUpdate(buf json.RawMessage) dealerUpdate {
 	var message dealerUpdate
 	err := json.Unmarshal(buf, &message)
 	if err != nil {
@@ -53,7 +53,7 @@ func handleDealerUpdate(buf json.RawMessage) dealerUpdate {
 	return message
 }
 
-func handlePickUpOrPass(buf json.RawMessage) requestForResponse {
+func HandlePickUpOrPass(buf json.RawMessage) requestForResponse {
 	var message requestForResponse
 	err := json.Unmarshal(buf, &message)
 	if err != nil {
@@ -63,7 +63,7 @@ func handlePickUpOrPass(buf json.RawMessage) requestForResponse {
 	return message
 }
 
-func handleOrderOrPass(buf json.RawMessage) requestForResponse {
+func HandleOrderOrPass(buf json.RawMessage) requestForResponse {
 	message := requestForResponse{}
 	err := json.Unmarshal(buf, &message)
 	if err != nil {
@@ -73,7 +73,7 @@ func handleOrderOrPass(buf json.RawMessage) requestForResponse {
 	return message
 }
 
-func handlePlayCard(buf json.RawMessage) requestForResponse {
+func HandlePlayCard(buf json.RawMessage) requestForResponse {
 	message := requestForResponse{}
 	err := json.Unmarshal(buf, &message)
 	if err != nil {
@@ -83,7 +83,7 @@ func handlePlayCard(buf json.RawMessage) requestForResponse {
 	return message
 }
 
-func handleDealerDiscard(buf json.RawMessage) requestForResponse {
+func HandleDealerDiscard(buf json.RawMessage) requestForResponse {
 	message := requestForResponse{}
 	err := json.Unmarshal(buf, &message)
 	if err != nil {
@@ -93,7 +93,7 @@ func handleDealerDiscard(buf json.RawMessage) requestForResponse {
 	return message
 }
 
-func handleGoItAlone(buf json.RawMessage) requestForResponse {
+func HandleGoItAlone(buf json.RawMessage) requestForResponse {
 	message := requestForResponse{}
 	err := json.Unmarshal(buf, &message)
 	if err != nil {
@@ -103,7 +103,7 @@ func handleGoItAlone(buf json.RawMessage) requestForResponse {
 	return message
 }
 
-func handleError(buf json.RawMessage) {
+func HandleError(buf json.RawMessage) {
 	var message string
 	err := json.Unmarshal(buf, &message)
 	if err != nil {
@@ -112,7 +112,7 @@ func handleError(buf json.RawMessage) {
 	log.Println(message)
 }
 
-func handleConnectionCheck(writer net.Conn) {
+func HandleConnectionCheck(writer net.Conn) {
 	message := fmt.Sprintf("Pong\n")
 	log.Println("Connection Check Message: ", message)
 	_, err := writer.Write([]byte(message))
@@ -121,7 +121,7 @@ func handleConnectionCheck(writer net.Conn) {
 	}
 }
 
-func handleSuitOrdered(buf json.RawMessage) suitOrdered {
+func HandleSuitOrdered(buf json.RawMessage) suitOrdered {
 	message := suitOrdered{}
 	err := json.Unmarshal(buf, &message)
 	if err != nil {
@@ -131,7 +131,7 @@ func handleSuitOrdered(buf json.RawMessage) suitOrdered {
 	return message
 }
 
-func handlePlays(buf json.RawMessage) {
+func HandlePlays(buf json.RawMessage) {
 	message := []playJSON{}
 	err := json.Unmarshal(buf, &message)
 	if err != nil {
@@ -140,7 +140,7 @@ func handlePlays(buf json.RawMessage) {
 	log.Println(message)
 }
 
-func handleTrickScore(buf json.RawMessage) {
+func HandleTrickScore(buf json.RawMessage) {
 	message := map[string]int{}
 	err := json.Unmarshal(buf, &message)
 	if err != nil {
@@ -149,7 +149,7 @@ func handleTrickScore(buf json.RawMessage) {
 	log.Println(message)
 }
 
-func handleUpdateScore(buf json.RawMessage) {
+func HandleUpdateScore(buf json.RawMessage) {
 	message := map[string]int{}
 	err := json.Unmarshal(buf, &message)
 	if err != nil {
@@ -158,7 +158,7 @@ func handleUpdateScore(buf json.RawMessage) {
 	log.Println(message)
 }
 
-func handlePlayerID(buf json.RawMessage) {
+func HandlePlayerID(buf json.RawMessage) int {
 	log.Print(string(buf))
 	var p int
 	if err := json.Unmarshal(buf, &p); err != nil {
@@ -166,9 +166,10 @@ func handlePlayerID(buf json.RawMessage) {
 	}
 	log.Print("I am player ", p)
 	id = p
+	return p
 }
 
-func handleGameOver(buf json.RawMessage) int {
+func HandleGameOver(buf json.RawMessage) int {
 	var message map[string]string
 	err := json.Unmarshal(buf, &message)
 	if err != nil {
@@ -194,7 +195,7 @@ func giveName(conn net.Conn, name string) {
 	}
 }
 
-func sayHello(conn net.Conn) {
+func SayHello(conn net.Conn) {
 	msg := map[string]string{"message": "hello"}
 	msgJson, _ := json.Marshal(msg)
 	env := Envelope{Type: "hello", Data: msgJson}
@@ -205,10 +206,17 @@ func sayHello(conn net.Conn) {
 	}
 }
 
-func encodeResponse(messageType string, data int) []byte {
+type responseEnvelope struct {
+	Type string         `json:"type"`
+	Data map[string]int `json:"data"`
+}
+
+func EncodeResponse(messageType string, data int) []byte {
 	msg := map[string]int{"response": data}
-	msgJson, _ := json.Marshal(msg)
-	env := Envelope{Type: messageType, Data: msgJson}
-	message, _ := json.Marshal(env)
+	env := responseEnvelope{Type: messageType, Data: msg}
+	message, err := json.Marshal(env)
+	if err != nil {
+		fmt.Println("Error:", err)
+	}
 	return message
 }

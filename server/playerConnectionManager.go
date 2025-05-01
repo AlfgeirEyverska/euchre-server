@@ -67,9 +67,9 @@ func (pcm PlayerConnectionManager) AskPlayerForX(player int, message string) str
 	select {
 	case x := <-pcm.Connections[player].responseChan:
 		return x
-	case <-time.After(30 * time.Second):
-		log.Printf("Timeout waiting for player %d", player)
-		return ""
+	// case <-time.After(30 * time.Second):
+	// 	log.Printf("Timeout waiting for player %d", player)
+	// 	return ""
 	case <-pcm.ctx.Done():
 		log.Println("Game context canceled")
 		return ""

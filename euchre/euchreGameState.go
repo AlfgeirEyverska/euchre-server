@@ -9,6 +9,8 @@ import (
 
 const targetScore = 10
 
+// TODO: Fix bug where trump is not reset after a trick
+
 type api interface {
 	AskPlayerForX(int, string) string
 	MessagePlayer(int, string)
@@ -578,6 +580,7 @@ func unpackJson(message string) (int, error) {
 	err := json.Unmarshal([]byte(message), &responseEnv)
 	if err != nil {
 		log.Println("Unable to unpack json")
+		log.Println("Message:", responseEnv)
 		return 0, errors.New("unable to unmarshal response envelope")
 	}
 
