@@ -43,6 +43,17 @@ type playJSON struct {
 	CardPlayed string `json:"played"`
 }
 
+func (pInfo playerInfo) String() string {
+	message := fmt.Sprintln("Player ", pInfo.PlayerID)
+	message += fmt.Sprintln(pInfo.Flip, " was flipped.")
+	message += fmt.Sprintln("Trump: ", pInfo.Trump)
+	message += fmt.Sprint("Your cards are: | ")
+	for _, v := range pInfo.Hand {
+		message += fmt.Sprint(v, " | ")
+	}
+	return message
+}
+
 func HandleDealerUpdate(buf json.RawMessage) dealerUpdate {
 	var message dealerUpdate
 	err := json.Unmarshal(buf, &message)
@@ -63,27 +74,7 @@ func HandlePickUpOrPass(buf json.RawMessage) requestForResponse {
 	return message
 }
 
-func HandleOrderOrPass(buf json.RawMessage) requestForResponse {
-	message := requestForResponse{}
-	err := json.Unmarshal(buf, &message)
-	if err != nil {
-		log.Fatalln(err)
-	}
-	log.Println(message.Info)
-	return message
-}
-
-func HandlePlayCard(buf json.RawMessage) requestForResponse {
-	message := requestForResponse{}
-	err := json.Unmarshal(buf, &message)
-	if err != nil {
-		log.Fatalln(err)
-	}
-	log.Println(message.ValidRes)
-	return message
-}
-
-func HandleDealerDiscard(buf json.RawMessage) requestForResponse {
+func HandleRequestForResponse(buf json.RawMessage) requestForResponse {
 	message := requestForResponse{}
 	err := json.Unmarshal(buf, &message)
 	if err != nil {
@@ -93,29 +84,63 @@ func HandleDealerDiscard(buf json.RawMessage) requestForResponse {
 	return message
 }
 
-func HandleGoItAlone(buf json.RawMessage) requestForResponse {
-	message := requestForResponse{}
-	err := json.Unmarshal(buf, &message)
-	if err != nil {
-		log.Fatalln(err)
-	}
-	log.Println(message)
-	return message
-}
+// func HandleOrderOrPass(buf json.RawMessage) requestForResponse {
+// 	message := requestForResponse{}
+// 	err := json.Unmarshal(buf, &message)
+// 	if err != nil {
+// 		log.Fatalln(err)
+// 	}
+// 	log.Println(message)
+// 	return message
+// }
 
-func HandleError(buf json.RawMessage) {
+// func HandlePlayCard(buf json.RawMessage) requestForResponse {
+// 	message := requestForResponse{}
+// 	err := json.Unmarshal(buf, &message)
+// 	if err != nil {
+// 		log.Fatalln(err)
+// 	}
+// 	log.Println(message)
+// 	return message
+// }
+
+// func HandleDealerDiscard(buf json.RawMessage) requestForResponse {
+// 	message := requestForResponse{}
+// 	err := json.Unmarshal(buf, &message)
+// 	if err != nil {
+// 		log.Fatalln(err)
+// 	}
+// 	log.Println(message)
+// 	return message
+// }
+
+// func HandleGoItAlone(buf json.RawMessage) requestForResponse {
+// 	message := requestForResponse{}
+// 	err := json.Unmarshal(buf, &message)
+// 	if err != nil {
+// 		log.Fatalln(err)
+// 	}
+// 	log.Println(message)
+// 	return message
+// }
+
+func HandleError(buf json.RawMessage) string {
 	var message string
 	err := json.Unmarshal(buf, &message)
 	if err != nil {
 		log.Fatalln(err)
 	}
 	log.Println(message)
+	return message
 }
 
 func HandleConnectionCheck(writer net.Conn) {
-	message := fmt.Sprintf("Pong\n")
-	log.Println("Connection Check Message: ", message)
-	_, err := writer.Write([]byte(message))
+	message := "Pong"
+
+	msgBytes := EncodeResponse("connectionCheck", message)
+
+	log.Println("Connection Check Message: ", msgBytes)
+	_, err := writer.Write(msgBytes)
 	if err != nil {
 		log.Fatalln(err)
 	}
@@ -131,31 +156,35 @@ func HandleSuitOrdered(buf json.RawMessage) suitOrdered {
 	return message
 }
 
-func HandlePlays(buf json.RawMessage) {
+func HandlePlays(buf json.RawMessage) []playJSON {
 	message := []playJSON{}
 	err := json.Unmarshal(buf, &message)
 	if err != nil {
 		log.Fatalln(err)
 	}
 	log.Println(message)
+	return message
 }
 
-func HandleTrickScore(buf json.RawMessage) {
+func HandleTrickScore(buf json.RawMessage) map[string]int {
 	message := map[string]int{}
 	err := json.Unmarshal(buf, &message)
 	if err != nil {
 		log.Fatalln(err)
 	}
 	log.Println(message)
+	return message
 }
 
-func HandleUpdateScore(buf json.RawMessage) {
+func HandleUpdateScore(buf json.RawMessage) map[string]int {
 	message := map[string]int{}
 	err := json.Unmarshal(buf, &message)
 	if err != nil {
 		log.Fatalln(err)
 	}
 	log.Println(message)
+	return message
+
 }
 
 func HandlePlayerID(buf json.RawMessage) int {
@@ -195,31 +224,35 @@ func giveName(conn net.Conn, name string) {
 	}
 }
 
+type responseEnvelope struct {
+	Type string `json:"type"`
+	Data any    `json:"data"`
+}
+
 func SayHello(conn net.Conn) {
-	msg := map[string]string{"message": "hello"}
-	msgJson, _ := json.Marshal(msg)
-	env := Envelope{Type: "hello", Data: msgJson}
-	message, _ := json.Marshal(env)
-	_, err := conn.Write([]byte(message))
+	msg := "hello"
+
+	msgBytes := EncodeResponse("hello", msg)
+
+	_, err := conn.Write(msgBytes)
+	log.Println("LENGTH OF HELLO MESSAGE: ", len(msgBytes))
 	if err != nil {
-		log.Fatalln(err)
+		log.Println(err)
+		return
 	}
 }
 
-type responseEnvelope struct {
-	Type string         `json:"type"`
-	Data map[string]int `json:"data"`
-}
+func EncodeResponse(messageType string, data any) []byte {
+	msg := map[string]any{"response": data}
 
-func EncodeResponse(messageType string, data int) []byte {
-	msg := map[string]int{"response": data}
 	env := responseEnvelope{Type: messageType, Data: msg}
 	message, err := json.Marshal(env)
 	if err != nil {
 		fmt.Println("Error:", err)
 	}
-	// trying newline termination
-	msgStr := string(message) + "\n"
-	log.Println(string(message))
-	return []byte(msgStr)
+
+	// Ensure newline terminated
+	message = append(message, '\n')
+
+	return message
 }

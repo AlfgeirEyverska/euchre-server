@@ -55,13 +55,22 @@ func (pcm PlayerConnectionManager) Broadcast(message string) {
 	for i := range pcm.Connections {
 		pcm.Connections[i].broadcastChan <- message + "\n"
 	}
+
+	// Sleep here instead?
+	// Added to ensure message write order
+	time.Sleep(10 * time.Millisecond)
+
 }
 
 func (pcm PlayerConnectionManager) MessagePlayer(playerID int, message string) {
 	pcm.Connections[playerID].broadcastChan <- message + "\n"
+
+	// Sleep here instead?
+	// Added to ensure message write order
+	time.Sleep(10 * time.Millisecond)
+
 }
 
-// TODO: conisder returning err on timeout
 func (pcm PlayerConnectionManager) AskPlayerForX(player int, message string) string {
 	pcm.Connections[player].messageChan <- message + "\n"
 	select {
@@ -90,6 +99,7 @@ func handleConnection(ctx context.Context, cancel context.CancelFunc, playerConn
 
 	buf := make([]byte, 1024)
 	for {
+		// Removing the read deadline broke the connections
 		playerConn.conn.SetReadDeadline(time.Now().Add(6 * time.Minute))
 		playerConn.conn.SetWriteDeadline(time.Now().Add(6 * time.Minute))
 		select {

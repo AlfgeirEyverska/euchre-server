@@ -350,8 +350,9 @@ func (gs *euchreGameState) playTrick() play {
 			log.Println("Player ", gs.CurrentPlayer.ID, " played invalid card.")
 			gs.API.MessagePlayer(gs.CurrentPlayer.ID, gs.Messages.InvalidCard())
 		}
-
 	}
+	message := gs.Messages.PlayedSoFar(plays)
+	gs.API.Broadcast(message)
 	// check winning card
 	winningPlay := plays[0]
 	for i := 1; i < len(plays); i++ {

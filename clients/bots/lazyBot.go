@@ -58,28 +58,32 @@ func LazyBot(doneChan chan int, ctx context.Context, cancel context.CancelFunc) 
 					return
 				}
 			case "orderOrPass":
-				client.HandleOrderOrPass(message.Data)
+				client.HandleRequestForResponse(message.Data)
+				// client.HandleOrderOrPass(message.Data)
 				_, err = conn.Write(client.EncodeResponse(message.Type, 2))
 				if err != nil {
 					log.Println(err)
 					return
 				}
 			case "dealerDiscard":
-				client.HandleDealerDiscard(message.Data)
+				client.HandleRequestForResponse(message.Data)
+				// client.HandleDealerDiscard(message.Data)
 				_, err = conn.Write(client.EncodeResponse(message.Type, 1))
 				if err != nil {
 					log.Println(err)
 					return
 				}
 			case "playCard":
-				client.HandlePlayCard(message.Data)
+				client.HandleRequestForResponse(message.Data)
+				// client.HandlePlayCard(message.Data)
 				_, err = conn.Write(client.EncodeResponse(message.Type, 1))
 				if err != nil {
 					log.Println(err)
 					return
 				}
 			case "goItAlone":
-				client.HandleGoItAlone(message.Data)
+				client.HandleRequestForResponse(message.Data)
+				// client.HandleGoItAlone(message.Data)
 				_, err = conn.Write(client.EncodeResponse(message.Type, 2))
 				if err != nil {
 					log.Println(err)

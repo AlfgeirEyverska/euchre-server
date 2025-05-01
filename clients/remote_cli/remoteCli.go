@@ -24,6 +24,53 @@ func sendResponse(msgType string, res int, conn net.Conn) error {
 	return nil
 }
 
+func validResponsesString(validRes map[int]string) string {
+	message := "Press | "
+	for i := 1; i <= len(validRes); i++ {
+		v, ok := validRes[i]
+		if !ok {
+			log.Println("Key not found in valid responses map.")
+		}
+		message += fmt.Sprint(i, " for ", v, " | ")
+	}
+	return message
+}
+
+func getInput() int {
+	var response int
+	for {
+		_, err := fmt.Scanf("%d", &response)
+		if err != nil {
+			time.Sleep(250 * time.Millisecond)
+			fmt.Println("Invalid response")
+			continue
+		}
+		fmt.Println("You entered: ", response)
+		return response
+	}
+}
+
+func handleRFR(message client.Envelope, conn net.Conn) error {
+	rfr := client.HandleRequestForResponse(message.Data)
+
+	fmt.Printf("%s\n", rfr.Info)
+
+	fmt.Printf("\n%s\n\n", message.Message)
+
+	fmt.Printf("%s\n\n", validResponsesString(rfr.ValidRes))
+
+	response := getInput()
+
+	err := sendResponse(message.Type, response, conn)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+// TODO: Consider adding timers to the server's sends to space them out and ensure their order.
+// TODO: Consider adding broadcast for pass or logic to print a representation of passing.
+// TODO: Consider adding broadcast for who won the trick
 func handleMyConnection(ctx context.Context, cancel context.CancelFunc) {
 	// Connect yourself
 	conn, err := net.Dial("tcp", "localhost:8080")
@@ -49,7 +96,7 @@ func handleMyConnection(ctx context.Context, cancel context.CancelFunc) {
 				return
 			}
 
-			fmt.Println(string(buf))
+			// fmt.Println(string(buf))
 
 			var message client.Envelope
 			err = json.Unmarshal(buf, &message)
@@ -58,45 +105,137 @@ func handleMyConnection(ctx context.Context, cancel context.CancelFunc) {
 				log.Println(err)
 			}
 
-			fmt.Println(message.Type)
-			fmt.Println(string(message.Data))
-			fmt.Print(message.Message, "\n\n")
+			// ##############################################################################
 
-			if message.Type == "connectionCheck" {
+			switch message.Type {
+			case "connectionCheck":
 				client.HandleConnectionCheck(conn)
-				continue
-			}
-
-			var response int
-			set := map[string]bool{"pickUpOrPass": true, "orderOrPass": true, "dealerDiscard": true, "playCard": true, "goItAlone": true}
-			_, exists := set[message.Type]
-			if exists {
-				for {
-					_, err := fmt.Scanf("%d", &response)
-					if err != nil {
-						time.Sleep(250 * time.Millisecond)
-						fmt.Println("Invalid response")
-						continue
-					}
-					fmt.Println("You entered: ", response)
-
-					err = sendResponse(message.Type, response, conn)
-					if err != nil {
-						time.Sleep(250 * time.Millisecond)
-						continue
-					}
-					break
+			case "pickUpOrPass":
+				err := handleRFR(message, conn)
+				if err != nil {
+					time.Sleep(250 * time.Millisecond)
+					continue
 				}
+			case "orderOrPass":
+				err := handleRFR(message, conn)
+				if err != nil {
+					time.Sleep(250 * time.Millisecond)
+					continue
+				}
+			case "dealerDiscard":
+				err := handleRFR(message, conn)
+				if err != nil {
+					time.Sleep(250 * time.Millisecond)
+					continue
+				}
+			case "playCard":
+				err := handleRFR(message, conn)
+				if err != nil {
+					time.Sleep(250 * time.Millisecond)
+					continue
+				}
+			case "goItAlone":
+				err := handleRFR(message, conn)
+				if err != nil {
+					time.Sleep(250 * time.Millisecond)
+					continue
+				}
+			case "playerID":
+				myID := client.HandlePlayerID(message.Data)
+				fmt.Printf("You are Player %d\n\n", myID)
+			case "dealerUpdate":
+				du := client.HandleDealerUpdate(message.Data)
+				fmt.Printf("Player %d is dealing.\n\n", du.Dealer)
+			case "suitOrdered":
+				so := client.HandleSuitOrdered(message.Data)
+				aloneStr := "is not"
+				if so.GoingAlone {
+					aloneStr = "is"
+				}
+				fmt.Printf("Player %d ordered %s and %s going it alone.\n\n", so.PlayerID, so.Trump, aloneStr)
+			case "plays":
+				plays := client.HandlePlays(message.Data)
+				lastPlay := plays[len(plays)-1]
+				fmt.Printf("Player %d played the %s.\n", lastPlay.PlayerID, lastPlay.CardPlayed)
+				// fmt.Println(message.Message)
+				// continue
+			case "trickScore":
+				tscore := client.HandleTrickScore(message.Data)
+
+				fmt.Printf("\n################################################################\n")
+				fmt.Printf("\nEven trick score: %d  |  Odd trick score: %d\n", tscore["evenTrickScore"], tscore["oddTrickScore"])
+				fmt.Printf("\n################################################################\n\n")
+
+			case "updateScore":
+				score := client.HandleUpdateScore(message.Data)
+				fmt.Printf("\n################################################################\n")
+				fmt.Printf("\nEven score: %d  |  Odd score: %d\n", score["evenScore"], score["oddScore"])
+				fmt.Printf("\n################################################################\n\n")
+			case "error":
+				errMessage := client.HandleError(message.Data)
+				fmt.Println(errMessage)
+			case "gameOver":
+				winner := client.HandleGameOver(message.Data)
+				if winner%2 == 0 {
+					fmt.Printf("Even team won!\n\n")
+					return
+				}
+				fmt.Printf("Odd team won!\n\n")
+				return
+			default:
+				log.Println("Unknown : ", message.Type)
+				log.Println("Unsupported message type.")
 			}
+
+			// ##############################################################################
+
+			// fmt.Println(message.Message)
+			// fmt.Println(message.Type)
+			// fmt.Println(string(message.Data))
+			// fmt.Print(message.Message, "\n\n")
+
+			// if message.Type == "connectionCheck" {
+			// 	client.HandleConnectionCheck(conn)
+			// 	continue
+			// }
+
+			// if message.Type == "plays" {
+			// 	plays := client.HandlePlays(message.Data)
+			// 	lastPlay := plays[len(plays)-1]
+			// 	fmt.Printf("Player %d played the %s.\n", lastPlay.PlayerID, lastPlay.CardPlayed)
+			// 	// fmt.Println(message.Message)
+			// 	continue
+			// }
+
+			// requests := map[string]bool{"pickUpOrPass": true, "orderOrPass": true, "dealerDiscard": true, "playCard": true, "goItAlone": true}
+			// _, exists := requests[message.Type]
+			// if exists {
+			// 	rfr := client.HandleRequestForResponse(message.Data)
+			// 	fmt.Println(printValidResponses(rfr.ValidRes))
+			// 	response := getInput()
+			// 	err = sendResponse(message.Type, response, conn)
+			// 	if err != nil {
+			// 		time.Sleep(250 * time.Millisecond)
+			// 		continue
+			// 	}
+			// 	// for {
+			// 	// 	err = sendResponse(message.Type, response, conn)
+			// 	// 	if err != nil {
+			// 	// 		time.Sleep(250 * time.Millisecond)
+			// 	// 		continue
+			// 	// 	}
+			// 	// 	break
+			// 	// }
+			// }
 		}
 
 	}
 }
 
 func Play() {
-	fmt.Println("################################################################")
+	fmt.Printf("################################################################\n")
 	fmt.Println("                 Let's Play Some Euchre!")
-	fmt.Println("################################################################")
+	fmt.Printf("################################################################\n\n")
 
 	// Set up context
 	ctx, cancel := context.WithCancel(context.Background())

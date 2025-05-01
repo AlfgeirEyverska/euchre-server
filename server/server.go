@@ -1,6 +1,7 @@
 package server
 
 import (
+	"bufio"
 	"context"
 	"encoding/json"
 	"euchre/euchre"
@@ -81,13 +82,14 @@ func NewGameListener() net.Listener {
 
 func waitForHello(conn net.Conn) bool {
 	conn.SetReadDeadline(time.Now().Add(10 * time.Second))
-	buf := make([]byte, 50)
-	_, err := conn.Read(buf)
+	reader := bufio.NewReader(conn)
+
+	buf, err := reader.ReadBytes('\n')
 	if err != nil {
 		fmt.Println("Failed to get hello message from conn.")
 		return false
 	}
-	// fmt.Println("Received Hello: ", string(buf[:n]))
+	fmt.Println("Received Hello: ", string(buf))
 	return true
 }
 
@@ -104,13 +106,14 @@ func isAlive(conn net.Conn) bool {
 	conn.SetReadDeadline(time.Now().Add(100 * time.Millisecond))
 
 	// Maybe reading into the buffer like this is the problem.
-	buf := make([]byte, 500)
-	n, err := conn.Read(buf)
+	reader := bufio.NewReader(conn)
+
+	buf, err := reader.ReadBytes('\n')
 	if err != nil {
 		log.Println("Failed to read from connection during liveness check")
 		return false
 	}
-	log.Println("Received Health Check: ", string(buf[:n]))
+	log.Println("Received Health Check: ", string(buf))
 	return true
 }
 

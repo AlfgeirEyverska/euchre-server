@@ -80,16 +80,20 @@ func RandomBot(doneChan chan int, ctx context.Context, cancel context.CancelFunc
 				res := client.HandlePickUpOrPass(message.Data)
 				sendRandomResponse(message.Type, res.ValidRes, conn)
 			case "orderOrPass":
-				res := client.HandleOrderOrPass(message.Data)
+				res := client.HandleRequestForResponse(message.Data)
+				// res := client.HandleOrderOrPass(message.Data)
 				sendRandomResponse(message.Type, res.ValidRes, conn)
 			case "dealerDiscard":
-				res := client.HandleDealerDiscard(message.Data)
+				res := client.HandleRequestForResponse(message.Data)
+				// res := client.HandleDealerDiscard(message.Data)
 				sendRandomResponse(message.Type, res.ValidRes, conn)
 			case "playCard":
-				res := client.HandlePlayCard(message.Data)
+				res := client.HandleRequestForResponse(message.Data)
+				// res := client.HandlePlayCard(message.Data)
 				sendRandomResponse(message.Type, res.ValidRes, conn)
 			case "goItAlone":
-				res := client.HandleGoItAlone(message.Data)
+				res := client.HandleRequestForResponse(message.Data)
+				// res := client.HandleGoItAlone(message.Data)
 				sendRandomResponse(message.Type, res.ValidRes, conn)
 			case "playerID":
 				client.HandlePlayerID(message.Data)

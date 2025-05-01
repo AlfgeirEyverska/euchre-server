@@ -8,7 +8,7 @@ PORT = 8080
 
 def encode_response(message_type, data):
     response = {"type": message_type, "data": {"response": data}}
-    response = json.dumps(response)
+    response = json.dumps(response) + '\n'
     response = response.encode()
     return response
 
@@ -18,7 +18,7 @@ def play(id):
         sock.connect((HOST, PORT))
         sock_file = sock.makefile("r", encoding="utf-8")
         
-        sock.send(b"hello")
+        sock.send(encode_response("hello", "hello"))
         
         while True:
             try:
