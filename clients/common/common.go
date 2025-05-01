@@ -218,6 +218,8 @@ func EncodeResponse(messageType string, data int) []byte {
 	if err != nil {
 		fmt.Println("Error:", err)
 	}
+	// trying newline termination
+	msgStr := string(message) + "\n"
 	log.Println(string(message))
-	return message
+	return []byte(msgStr)
 }

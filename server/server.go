@@ -102,7 +102,9 @@ func isAlive(conn net.Conn) bool {
 	}
 
 	conn.SetReadDeadline(time.Now().Add(100 * time.Millisecond))
-	buf := make([]byte, 50)
+
+	// Maybe reading into the buffer like this is the problem.
+	buf := make([]byte, 500)
 	n, err := conn.Read(buf)
 	if err != nil {
 		log.Println("Failed to read from connection during liveness check")
