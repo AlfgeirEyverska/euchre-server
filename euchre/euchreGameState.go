@@ -45,7 +45,7 @@ type euchreGameState struct {
 	trump         suit
 	API           api
 	Messages      messageGenerator
-	whoOrdered    *player
+	whoOrdered    int
 	discard       deck
 	flip          card
 	leftBower     card
@@ -141,11 +141,11 @@ func (gs *euchreGameState) OfferTheFlippedCard() (pickedUp bool) {
 
 		message := gs.Messages.PickUpOrPass(gs.CurrentPlayer.ID, gs.trump, gs.flip, gs.CurrentPlayer.hand, validResponses)
 		response := gs.getValidResponse(gs.CurrentPlayer.ID, message, validResponses)
-		log.Println("FlippedCardResponse ", response)
+		log.Printf("Player %d FlippedCardResponse: %s\n", gs.CurrentPlayer.ID, validResponses[response])
 		// TODO: Add broadcast for flipped card response
 
 		if response == 2 {
-			gs.playerOrderedSuit(*gs.CurrentPlayer, gs.flip.suit)
+			gs.playerOrderedSuit(gs.CurrentPlayer.ID, gs.flip.suit)
 			pickedUp = true
 			gs.askPlayerIfGoingAlone()
 			return
@@ -222,7 +222,7 @@ func (gs *euchreGameState) askPlayerToOrderOrPass() (pass bool) {
 		return
 	}
 	pass = false
-	gs.playerOrderedSuit(*gs.CurrentPlayer, responseSuits[response])
+	gs.playerOrderedSuit(gs.CurrentPlayer.ID, responseSuits[response])
 
 	gs.askPlayerIfGoingAlone()
 
@@ -236,7 +236,7 @@ func (gs *euchreGameState) askPlayerIfGoingAlone() {
 	message := gs.Messages.GoItAlone(gs.CurrentPlayer.ID, gs.trump, gs.flip, gs.CurrentPlayer.hand, validResponses)
 
 	response := gs.getValidResponse(gs.CurrentPlayer.ID, message, validResponses)
-	log.Println("AloneResponse ", response)
+	log.Printf("Player %d going alone? %s", gs.CurrentPlayer.ID, validResponses[response])
 
 	gs.goingItAlone = response == 1
 
@@ -374,8 +374,7 @@ func nextPlayerID(p player) int {
 
 func (gs *euchreGameState) NextDealer() {
 	gs.CurrentDealer = gs.players[nextPlayerID(*gs.CurrentDealer)]
-	// For some reason this broke the player progression
-	// gs.CurrentPlayer = gs.players[nextPlayerID(*gs.CurrentDealer)]
+	log.Printf("Dealer set to player %d", gs.CurrentDealer.ID)
 }
 
 func (gs *euchreGameState) nextPlayer() {
@@ -384,7 +383,7 @@ func (gs *euchreGameState) nextPlayer() {
 
 	if gs.goingItAlone {
 
-		lonePlayerID := gs.whoOrdered.ID
+		lonePlayerID := gs.whoOrdered
 		lonePlayerPartner := (lonePlayerID + 2) % NumPlayers
 
 		if gs.CurrentPlayer.ID == lonePlayerPartner {
@@ -394,7 +393,9 @@ func (gs *euchreGameState) nextPlayer() {
 }
 
 func (gs *euchreGameState) ResetFirstPlayer() {
-	gs.CurrentPlayer = gs.players[nextPlayerID(*gs.CurrentDealer)]
+	// This sequence handles the case where the player after the dealer is excluded by lone partner
+	gs.CurrentPlayer = gs.CurrentDealer
+	gs.nextPlayer()
 }
 
 func (gs *euchreGameState) setFirstPlayer(p player) {
@@ -404,7 +405,7 @@ func (gs *euchreGameState) setFirstPlayer(p player) {
 func (gs euchreGameState) numPoints(evenScore int, oddScore int) int {
 
 	if gs.goingItAlone {
-		if gs.whoOrdered.ID%2 == 0 {
+		if gs.whoOrdered%2 == 0 {
 			if evenScore == 5 {
 				return 4
 			}
@@ -426,7 +427,7 @@ func (gs euchreGameState) numPoints(evenScore int, oddScore int) int {
 			}
 		}
 	} else {
-		if gs.whoOrdered.ID%2 == 0 {
+		if gs.whoOrdered%2 == 0 {
 			if evenScore == 5 {
 				return 2
 			}
@@ -469,13 +470,12 @@ func (gs *euchreGameState) oddTeamScored(n int) {
 	gs.oddTeamScore += n
 }
 
-func (gs *euchreGameState) playerOrderedSuit(p player, s suit) {
-	gs.whoOrdered = &p
+func (gs *euchreGameState) playerOrderedSuit(id int, s suit) {
+	gs.whoOrdered = id
 	gs.trump = s
 	gs.leftBower = gs.getLeftBower()
 
 	// TODO: Fix resetting the first player. The bots were able to go it alone and it skipped my partner instead
-	// gs.ResetFirstPlayer()
 	log.Println(gs.trump, "s are trump.")
 }
 

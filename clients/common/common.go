@@ -29,7 +29,7 @@ type playerInfo struct {
 	Hand     []string `json:"hand"`
 }
 
-type requestForResponse struct {
+type RequestForResponse struct {
 	Info     playerInfo     `json:"playerInfo"`
 	ValidRes map[int]string `json:"validResponses"`
 }
@@ -45,7 +45,7 @@ type playJSON struct {
 
 func (pInfo playerInfo) String() string {
 	message := fmt.Sprintln("Player ", pInfo.PlayerID)
-	message += fmt.Sprintln(pInfo.Flip, " was flipped.")
+	// message += fmt.Sprintln(pInfo.Flip, " was flipped.")
 	message += fmt.Sprintln("Trump: ", pInfo.Trump)
 	message += fmt.Sprint("Your cards are: | ")
 	for _, v := range pInfo.Hand {
@@ -64,8 +64,8 @@ func HandleDealerUpdate(buf json.RawMessage) dealerUpdate {
 	return message
 }
 
-func HandlePickUpOrPass(buf json.RawMessage) requestForResponse {
-	var message requestForResponse
+func HandlePickUpOrPass(buf json.RawMessage) RequestForResponse {
+	var message RequestForResponse
 	err := json.Unmarshal(buf, &message)
 	if err != nil {
 		log.Fatalln(err)
@@ -74,8 +74,8 @@ func HandlePickUpOrPass(buf json.RawMessage) requestForResponse {
 	return message
 }
 
-func HandleRequestForResponse(buf json.RawMessage) requestForResponse {
-	message := requestForResponse{}
+func HandleRequestForResponse(buf json.RawMessage) RequestForResponse {
+	message := RequestForResponse{}
 	err := json.Unmarshal(buf, &message)
 	if err != nil {
 		log.Fatalln(err)

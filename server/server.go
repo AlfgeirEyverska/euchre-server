@@ -89,7 +89,7 @@ func waitForHello(conn net.Conn) bool {
 		fmt.Println("Failed to get hello message from conn.")
 		return false
 	}
-	fmt.Println("Received Hello: ", string(buf))
+	log.Println("Received Hello: ", string(buf))
 	return true
 }
 

@@ -11,8 +11,8 @@ func setUpLogger() *os.File {
 	if err != nil {
 		log.Fatal(err)
 	}
-	log.SetOutput(os.Stdout)
-	// log.SetOutput(logFile)
+	// log.SetOutput(os.Stdout)
+	log.SetOutput(logFile)
 	// log.SetOutput(io.Discard)
 	log.SetFlags(log.LstdFlags | log.Lshortfile)
 	return logFile

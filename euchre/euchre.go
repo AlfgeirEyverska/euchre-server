@@ -39,6 +39,7 @@ func PlayEuchre(ctx context.Context, gameState euchreGameState) {
 			gameState.Play5Tricks()
 
 			gameState.NextDealer()
+			gameState.ResetFirstPlayer()
 
 		}
 	}
