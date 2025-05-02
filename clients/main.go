@@ -2,8 +2,11 @@ package main
 
 import (
 	remotecli "clients/remote_cli"
+	"context"
 	"log"
 	"os"
+	"os/signal"
+	"syscall"
 )
 
 func main() {
@@ -16,7 +19,21 @@ func main() {
 	log.SetOutput(logFile)
 	log.SetFlags(log.LstdFlags | log.Lshortfile)
 
-	remotecli.Play()
+	// Set up context
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	signalChan := make(chan os.Signal, 1)
+	signal.Notify(signalChan, os.Interrupt, syscall.SIGTERM)
+	go func() {
+		<-signalChan
+		log.Println("Shutdown signal received...")
+		cancel()
+	}()
+
+	remotecli.Play(ctx)
+
+	log.Println("Done cleaning up.")
 
 }
 

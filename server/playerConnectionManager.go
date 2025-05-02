@@ -144,7 +144,10 @@ func drainChannel(ch <-chan string, conn net.Conn) {
 	// timeout := time.After(200 * time.Millisecond)
 	for {
 		select {
-		case msg := <-ch:
+		case msg, ok := <-ch:
+			if !ok {
+				return
+			}
 			// conn.SetWriteDeadline(time.Now().Add(10 * time.Millisecond))
 			conn.SetWriteDeadline(time.Now().Add(500 * time.Millisecond)) // protect against stalled clients
 			conn.Write([]byte(msg))

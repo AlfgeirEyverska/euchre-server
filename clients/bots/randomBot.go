@@ -33,18 +33,19 @@ func sendRandomResponse(messageType string, validResponses map[int]string, write
 	}
 }
 
-func RandomBot(doneChan chan int, ctx context.Context, cancel context.CancelFunc) {
-
-	defer close(doneChan)
+func RandomBot(doneChan chan int, ctx context.Context) {
 
 	conn, err := net.Dial("tcp", "localhost:8080")
 	if err != nil {
-		close(doneChan)
-		log.Println(err)
-		cancel()
 		return
 	}
-	defer conn.Close()
+
+	defer func() {
+		conn.Close()
+		close(doneChan)
+		log.Println(err)
+		// cancel()
+	}()
 
 	client.SayHello(conn)
 
@@ -58,7 +59,7 @@ func RandomBot(doneChan chan int, ctx context.Context, cancel context.CancelFunc
 			buf, err := reader.ReadBytes('\n')
 			if err != nil {
 				log.Println(err)
-				cancel()
+				// cancel()
 				return
 			}
 
@@ -67,7 +68,7 @@ func RandomBot(doneChan chan int, ctx context.Context, cancel context.CancelFunc
 			if err != nil {
 				log.Println("Original Unmarshal Failure: ", string(buf))
 				log.Println(err)
-				cancel()
+				// cancel()
 				return
 			}
 

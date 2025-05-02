@@ -9,13 +9,9 @@ import (
 	"fmt"
 	"log"
 	"net"
-	"os"
-	"os/signal"
-	"syscall"
 	"time"
 )
 
-// TODO: fix bug where game over does not print out the rest of the stuff
 func sendResponse(msgType string, res int, conn net.Conn) error {
 	_, err := conn.Write(client.EncodeResponse(msgType, res))
 	if err != nil {
@@ -46,13 +42,11 @@ func getInput() int {
 			time.Sleep(250 * time.Millisecond)
 			continue
 		}
-		fmt.Println("You entered: ", response)
 		return response
 	}
 }
 
 func handleRFR(rfr client.RequestForResponse, message client.Envelope, conn net.Conn) error {
-
 	fmt.Printf("%s\n\n", rfr.Info)
 	fmt.Printf("%s\n\n", message.Message)
 	fmt.Printf("%s\n\n", validResponsesString(rfr.ValidRes))
@@ -69,7 +63,6 @@ func handleRFR(rfr client.RequestForResponse, message client.Envelope, conn net.
 func processMessage(buf []byte, conn net.Conn) {
 
 	var message client.Envelope
-
 	err := json.Unmarshal(buf, &message)
 	if err != nil {
 		log.Println("Original Unmarshal Failure: ", string(buf))
@@ -92,7 +85,6 @@ func processMessage(buf []byte, conn net.Conn) {
 		err := handleRFR(rfr, message, conn)
 		if err != nil {
 			log.Println("Received error: ", err)
-			time.Sleep(250 * time.Millisecond)
 		}
 
 	case "orderOrPass":
@@ -102,7 +94,6 @@ func processMessage(buf []byte, conn net.Conn) {
 		err := handleRFR(rfr, message, conn)
 		if err != nil {
 			log.Println("Received error: ", err)
-			time.Sleep(250 * time.Millisecond)
 		}
 
 	case "dealerDiscard":
@@ -111,7 +102,6 @@ func processMessage(buf []byte, conn net.Conn) {
 		err := handleRFR(rfr, message, conn)
 		if err != nil {
 			log.Println("Received error: ", err)
-			time.Sleep(250 * time.Millisecond)
 		}
 
 	case "playCard":
@@ -120,7 +110,6 @@ func processMessage(buf []byte, conn net.Conn) {
 		err := handleRFR(rfr, message, conn)
 		if err != nil {
 			log.Println("Received error: ", err)
-			time.Sleep(250 * time.Millisecond)
 		}
 
 	case "goItAlone":
@@ -129,7 +118,6 @@ func processMessage(buf []byte, conn net.Conn) {
 		err := handleRFR(rfr, message, conn)
 		if err != nil {
 			log.Println("Received error: ", err)
-			time.Sleep(250 * time.Millisecond)
 		}
 
 	case "playerID":
@@ -192,14 +180,16 @@ func processMessage(buf []byte, conn net.Conn) {
 		log.Println("Unsupported message type.")
 
 	}
-
 	time.Sleep(500 * time.Millisecond)
 }
 
 func drainChannel(updateChan chan []byte, conn net.Conn) {
 	for {
 		select {
-		case buf := <-updateChan:
+		case buf, ok := <-updateChan:
+			if !ok {
+				return
+			}
 			processMessage(buf, conn)
 		default:
 			return
@@ -210,19 +200,27 @@ func drainChannel(updateChan chan []byte, conn net.Conn) {
 // TODO: fix the error where a pass was misinterpreted as a pick it up
 // TODO: Consider adding broadcast for pass or logic to print a representation of passing.
 // TODO: Consider adding broadcast for who won the trick
-func handleMyConnection(ctx context.Context, cancel context.CancelFunc) {
+func handleMyConnection(ctx context.Context, done chan struct{}) {
 	conn, err := net.Dial("tcp", "localhost:8080")
 	if err != nil {
 		log.Println(err)
 		return
 	}
-	defer conn.Close()
 
 	client.SayHello(conn)
 
 	reader := bufio.NewReader(conn)
 	updateChan := make(chan []byte, 10)
 
+	// Cleanup
+	defer func() {
+		log.Println("Sending final messages and closing the connection.")
+		drainChannel(updateChan, conn)
+		conn.Close()
+		close(done)
+	}()
+
+	// This closure reads all lines from the connection and puts them in updateChan
 	go func() {
 		defer close(updateChan)
 		for {
@@ -241,14 +239,13 @@ func handleMyConnection(ctx context.Context, cancel context.CancelFunc) {
 		}
 	}()
 
+	// Process messages until the context is cancelled or the channel is closed
 	for {
 		select {
 		case <-ctx.Done():
-			drainChannel(updateChan, conn)
 			return
 		case buf, ok := <-updateChan:
 			if !ok {
-				drainChannel(updateChan, conn)
 				return
 			}
 			processMessage(buf, conn)
@@ -256,45 +253,35 @@ func handleMyConnection(ctx context.Context, cancel context.CancelFunc) {
 	}
 }
 
-func Play() {
+func Play(ctx context.Context) {
 	fmt.Printf("################################################################\n")
 	fmt.Println("                 Let's Play Some Euchre!")
 	fmt.Printf("################################################################\n\n")
 
-	// Set up context
-	ctx, cancel := context.WithCancel(context.Background())
-
-	signalChan := make(chan os.Signal, 1)
-	signal.Notify(signalChan, os.Interrupt, syscall.SIGTERM)
-	go func() {
-		<-signalChan
-		log.Println("Shutdown signal received...")
-		cancel()
-	}()
-
 	// Set up bots
 	doneChans := []chan int{}
 	for i := range 3 {
+
 		log.Println("Starting bot ", i)
 		doneChan := make(chan int)
-		go bots.RandomBot(doneChan, ctx, cancel)
+
+		go bots.RandomBot(doneChan, ctx)
 		// go bots.LazyBot(doneChan, ctx, cancel)
+
 		doneChans = append(doneChans, doneChan)
 	}
 
 	// Wait to make sure the bots connect first
 	time.Sleep(500 * time.Millisecond)
-	go handleMyConnection(ctx, cancel)
 
-	for i := range 3 {
-		<-doneChans[i]
-		// log.Println("Waiting for player ", i)
-		// select {
-		// case <-doneChans[i]:
-		// 	continue
-		// case <-ctx.Done():
-		// 	break
-		// }
+	done := make(chan struct{})
+	go handleMyConnection(ctx, done)
+
+	select {
+	case <-done:
+		log.Println("Game finished normally")
+	case <-ctx.Done():
+		log.Println("Context cancelled")
 	}
 	fmt.Println("Game Over!!")
 }
