@@ -24,9 +24,11 @@ type messageGenerator interface {
 	DealerDiscard(int, suit, card, deck, map[int]string) string
 	PickUpOrPass(int, suit, card, deck, map[int]string) string
 	OrderOrPass(int, suit, card, deck, map[int]string) string
+	PlayerPassed(int) string
 	GoItAlone(int, suit, card, deck, map[int]string) string
 	DealerMustOrder() string
 	PlayedSoFar([]play) string
+	TrickWinner(int) string
 	TricksSoFar(int, int) string
 	UpdateScore(int, int) string
 	DealerUpdate(int) string
@@ -142,7 +144,6 @@ func (gs *euchreGameState) OfferTheFlippedCard() (pickedUp bool) {
 		message := gs.Messages.PickUpOrPass(gs.CurrentPlayer.ID, gs.trump, gs.flip, gs.CurrentPlayer.hand, validResponses)
 		response := gs.getValidResponse(gs.CurrentPlayer.ID, message, validResponses)
 		log.Printf("Player %d FlippedCardResponse: %s\n", gs.CurrentPlayer.ID, validResponses[response])
-		// TODO: Add broadcast for flipped card response
 
 		if response == 2 {
 			gs.playerOrderedSuit(gs.CurrentPlayer.ID, gs.flip.suit)
@@ -152,6 +153,8 @@ func (gs *euchreGameState) OfferTheFlippedCard() (pickedUp bool) {
 		}
 
 		// getValidResponse ensures that if it wasn't "2" it is "1"
+		message = gs.Messages.PlayerPassed(gs.CurrentPlayer.ID)
+		gs.API.Broadcast(message)
 		gs.nextPlayer()
 		continue
 	}
@@ -291,7 +294,10 @@ func (gs *euchreGameState) Play5Tricks() {
 			oddScore++
 		}
 
-		message := gs.Messages.TricksSoFar(evenScore, oddScore)
+		message := gs.Messages.TrickWinner(winningPlay.cardPlayer.ID)
+		gs.API.Broadcast(message)
+
+		message = gs.Messages.TricksSoFar(evenScore, oddScore)
 		gs.API.Broadcast(message)
 		log.Println("Even Trick Score ", evenScore, " | Odd Trick Score", oddScore)
 

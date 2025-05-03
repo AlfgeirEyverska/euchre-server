@@ -47,7 +47,7 @@ func getInput() int {
 }
 
 func handleRFR(rfr client.RequestForResponse, message client.Envelope, conn net.Conn) error {
-	fmt.Printf("%s\n\n", rfr.Info)
+	fmt.Printf("\n%s\n\n", rfr.Info)
 	fmt.Printf("%s\n\n", message.Message)
 	fmt.Printf("%s\n\n", validResponsesString(rfr.ValidRes))
 
@@ -81,7 +81,7 @@ func processMessage(buf []byte, conn net.Conn) {
 	case "pickUpOrPass":
 
 		rfr := client.HandleRequestForResponse(message.Data)
-		fmt.Printf("Dealer flipped: %s.\n\n", rfr.Info.Flip)
+		// fmt.Printf("\nDealer flipped: %s.\n", rfr.Info.Flip)
 		err := handleRFR(rfr, message, conn)
 		if err != nil {
 			log.Println("Received error: ", err)
@@ -90,11 +90,15 @@ func processMessage(buf []byte, conn net.Conn) {
 	case "orderOrPass":
 
 		rfr := client.HandleRequestForResponse(message.Data)
-		fmt.Printf("Dealer flipped: %s.\n\n", rfr.Info.Flip)
+		// fmt.Printf("\nDealer flipped: %s.\n", rfr.Info.Flip)
 		err := handleRFR(rfr, message, conn)
 		if err != nil {
 			log.Println("Received error: ", err)
 		}
+
+	case "playerPassed":
+
+		fmt.Println(message.Message)
 
 	case "dealerDiscard":
 
@@ -145,6 +149,10 @@ func processMessage(buf []byte, conn net.Conn) {
 		lastPlay := plays[len(plays)-1]
 		fmt.Printf("Player %d played the %s.\n", lastPlay.PlayerID, lastPlay.CardPlayed)
 
+	case "trickWinner":
+
+		fmt.Printf("\n%s\n", message.Message)
+
 	case "trickScore":
 
 		tscore := client.HandleTrickScore(message.Data)
@@ -180,7 +188,6 @@ func processMessage(buf []byte, conn net.Conn) {
 		log.Println("Unsupported message type.")
 
 	}
-	time.Sleep(500 * time.Millisecond)
 }
 
 func drainChannel(updateChan chan []byte, conn net.Conn) {
@@ -198,7 +205,6 @@ func drainChannel(updateChan chan []byte, conn net.Conn) {
 }
 
 // TODO: fix the error where a pass was misinterpreted as a pick it up
-// TODO: Consider adding broadcast for pass or logic to print a representation of passing.
 // TODO: Consider adding broadcast for who won the trick
 func handleMyConnection(ctx context.Context, done chan struct{}) {
 	conn, err := net.Dial("tcp", "localhost:8080")
@@ -249,6 +255,7 @@ func handleMyConnection(ctx context.Context, done chan struct{}) {
 				return
 			}
 			processMessage(buf, conn)
+			time.Sleep(750 * time.Millisecond)
 		}
 	}
 }

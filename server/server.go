@@ -8,8 +8,6 @@ import (
 	"fmt"
 	"log"
 	"net"
-	"os"
-	"os/signal"
 	"sync"
 	"syscall"
 	"time"
@@ -22,37 +20,96 @@ import (
 const MaxConcurrentGames = 10
 
 type Server struct {
-	ctx      context.Context
-	cancel   context.CancelFunc
 	connChan chan net.Conn
 	tracker  *ConnTracker
 }
 
 func NewServer() *Server {
 
-	ctx, cancel := context.WithCancel(context.Background())
-
-	signalChan := make(chan os.Signal, 1)
-	signal.Notify(signalChan, os.Interrupt, syscall.SIGTERM)
-	go func() {
-		<-signalChan
-		log.Println("Shutdown signal received...")
-		cancel()
-	}()
-
 	connChan := make(chan net.Conn, MaxConcurrentGames*euchre.NumPlayers)
 	tracker := NewConnTracker()
 
 	return &Server{
-		ctx:      ctx,
-		cancel:   cancel,
 		connChan: connChan,
 		tracker:  &tracker,
 	}
 
 }
 
-func NewGameListener() net.Listener {
+// acceptConns takes all incoming Connections from the net.Listener and puts them in connChan
+func (s *Server) AcceptConns(ctx context.Context) {
+	listener := newGameListener()
+	defer listener.Close()
+	log.Println("Euchre server listening...")
+
+	for {
+		select {
+		case <-ctx.Done():
+			log.Println("Shutting down AcceptConns...")
+			return
+		default:
+			conn, err := listener.Accept()
+			if err != nil {
+				log.Println("Connection accept error:", err)
+				continue
+			}
+			if !waitForHello(conn) {
+				fmt.Println("Never got a hello message, discarding connection")
+				conn.Close()
+				// ct.done(conn)
+				continue
+			}
+			s.tracker.add(conn)
+			log.Println("New connection accepted")
+			s.connChan <- conn
+		}
+	}
+}
+
+func (s *Server) StartGames(ctx context.Context) {
+	var mu sync.Mutex
+	var numConcurrentGames int
+
+	for {
+		select {
+		case <-ctx.Done():
+			log.Println("Shutting down StartGames...")
+			return
+		default:
+
+			mu.Lock()
+			atCapacity := numConcurrentGames >= MaxConcurrentGames
+			mu.Unlock()
+
+			if atCapacity {
+				log.Println("Max concurrent games reached. Waiting...")
+				time.Sleep(5 * time.Second)
+				continue
+			}
+
+			playerConns := makeLobby(s.connChan, s.tracker)
+
+			mu.Lock()
+			numConcurrentGames++
+			fmt.Println("NumConcurrentGames ", numConcurrentGames)
+			log.Println("New game starting. Active games:", numConcurrentGames)
+			mu.Unlock()
+
+			go startGame(ctx, playerConns, &mu, &numConcurrentGames, s.tracker)
+		}
+	}
+}
+
+func (s *Server) GracefulShutdown() {
+	// <-ctx.Done()
+	fmt.Println("Intitiating shutdown. Waiting for games in progress to finish...")
+	s.tracker.Prune()
+	s.tracker.Wait()
+	fmt.Println("Graceful shutdown complete.")
+}
+
+// NewGameListener with these configurations is supposed to improve socket cleanup performance
+func newGameListener() net.Listener {
 	lc := net.ListenConfig{
 		Control: func(network, address string, c syscall.RawConn) error {
 			var err error
@@ -72,7 +129,7 @@ func NewGameListener() net.Listener {
 	return ln
 }
 
-// func NewGameListener() net.Listener {
+// func newGameListener() net.Listener {
 // 	ln, err := net.Listen("tcp", ":8080")
 // 	if err != nil {
 // 		log.Fatalln(err)
@@ -117,36 +174,6 @@ func isAlive(conn net.Conn) bool {
 	return true
 }
 
-// acceptConns takes all incoming Connections from the net.Listener and puts them in connChan
-func (s *Server) AcceptConns() {
-	listener := NewGameListener()
-	defer listener.Close()
-	log.Println("Euchre server listening...")
-
-	for {
-		select {
-		case <-s.ctx.Done():
-			log.Println("Shutting down AcceptConns...")
-			return
-		default:
-			conn, err := listener.Accept()
-			if err != nil {
-				log.Println("Connection accept error:", err)
-				continue
-			}
-			if !waitForHello(conn) {
-				fmt.Println("Never got a hello message, discarding connection")
-				conn.Close()
-				// ct.done(conn)
-				continue
-			}
-			s.tracker.add(conn)
-			log.Println("New connection accepted")
-			s.connChan <- conn
-		}
-	}
-}
-
 func makeLobby(connChan chan net.Conn, ct *ConnTracker) []net.Conn {
 	playerConns := []net.Conn{}
 	for len(playerConns) < euchre.NumPlayers {
@@ -163,81 +190,48 @@ func makeLobby(connChan chan net.Conn, ct *ConnTracker) []net.Conn {
 	return playerConns
 }
 
-func startGame(playerConns []net.Conn, mu *sync.Mutex, numConcurrentGames *int, ct *ConnTracker) {
-
-	connMan := NewPlayerConnectionManagerFromConns(playerConns)
+func startGame(ctx context.Context, playerConns []net.Conn, mu *sync.Mutex, numConcurrentGames *int, ct *ConnTracker) {
 
 	defer func() {
 		mu.Lock()
 		*numConcurrentGames--
 		fmt.Println("NumConcurrentGames ", *numConcurrentGames)
 		mu.Unlock()
-		connMan.cancel()
-
-		// for _, pconn := range connMan.Connections {
-		// 	close(pconn.broadcastChan)
-		// 	close(pconn.messageChan)
-		// }
 
 		for _, conn := range playerConns {
 			ct.done(conn) // conn closed in handleConnection
 		}
 	}()
 
+	playerConnections := PlayerConnectionManager(make([]*playerConnection, len(playerConns)))
+
+	for i, conn := range playerConns {
+
+		playerConnections[i] = &playerConnection{
+			id:            i,
+			conn:          conn,
+			broadcastChan: make(chan string, 10),
+			messageChan:   make(chan string, 10),
+			responseChan:  make(chan string, 10),
+		}
+
+		go handleConnection(ctx, playerConnections[i])
+
+	}
+
+	playerConnections.GreetPlayers()
+
 	done := make(chan struct{})
 	go func() {
 		defer close(done)
-		// time.Sleep(1 * time.Second)
-		game := euchre.NewEuchreGameState(connMan, euchre.JsonAPI{})
-		euchre.PlayEuchre(connMan.ctx, game)
+		game := euchre.NewEuchreGameState(&playerConnections, euchre.JsonAPI{})
+		euchre.PlayEuchre(ctx, game)
 	}()
 
 	select {
 	case <-done:
 		log.Println("Game finished normally")
-	case <-connMan.ctx.Done():
+	case <-ctx.Done():
 		fmt.Println("Game cancelled due to disconnect or timeout")
 	}
-}
-
-func (s *Server) StartGames() {
-	var mu sync.Mutex
-	var numConcurrentGames int
-
-	for {
-		select {
-		case <-s.ctx.Done():
-			log.Println("Shutting down StartGames...")
-			return
-		default:
-
-			mu.Lock()
-			atCapacity := numConcurrentGames >= MaxConcurrentGames
-			mu.Unlock()
-
-			if atCapacity {
-				log.Println("Max concurrent games reached. Waiting...")
-				time.Sleep(5 * time.Second)
-				continue
-			}
-
-			playerConns := makeLobby(s.connChan, s.tracker)
-
-			mu.Lock()
-			numConcurrentGames++
-			fmt.Println("NumConcurrentGames ", numConcurrentGames)
-			log.Println("New game starting. Active games:", numConcurrentGames)
-			mu.Unlock()
-
-			go startGame(playerConns, &mu, &numConcurrentGames, s.tracker)
-		}
-	}
-}
-
-func (s *Server) GracefulShutdown() {
-	<-s.ctx.Done()
-	fmt.Println("Intitiating shutdown. Waiting for games in progress to finish...")
-	s.tracker.Prune()
-	s.tracker.Wait()
-	fmt.Println("Graceful shutdown complete.")
 }

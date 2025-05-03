@@ -12,12 +12,42 @@ type ConnTracker struct {
 	wg    sync.WaitGroup
 }
 
+// NewConnTracker creates a default ConnTracker
 func NewConnTracker() ConnTracker {
 	return ConnTracker{
 		mu:    sync.Mutex{},
 		conns: make(map[net.Conn]struct{}),
 		wg:    sync.WaitGroup{},
 	}
+}
+
+// CloseAll closes all tracked connections and removes them from the map.
+func (ct *ConnTracker) CloseAll() {
+	ct.mu.Lock()
+	defer ct.mu.Unlock()
+	for conn := range ct.conns {
+		_ = conn.Close() // ignore error — shutting down anyway
+		ct.wg.Done()
+		delete(ct.conns, conn)
+	}
+}
+
+// Prune checks all of the connections in ct for liveness and closes the dead ones
+func (ct *ConnTracker) Prune() {
+	ct.mu.Lock()
+	defer ct.mu.Unlock()
+	for conn := range ct.conns {
+		if !isAlive(conn) {
+			_ = conn.Close() // ignore error — shutting down anyway
+			ct.wg.Done()
+			delete(ct.conns, conn)
+		}
+	}
+}
+
+// wait blocks until all tracked connections have completed.
+func (ct *ConnTracker) Wait() {
+	ct.wg.Wait()
 }
 
 // add registers a new connection and increments the WaitGroup counter.
@@ -36,32 +66,4 @@ func (ct *ConnTracker) done(conn net.Conn) {
 		delete(ct.conns, conn)
 		ct.wg.Done()
 	}
-}
-
-// closeAll closes all tracked connections and removes them from the map.
-func (ct *ConnTracker) CloseAll() {
-	ct.mu.Lock()
-	defer ct.mu.Unlock()
-	for conn := range ct.conns {
-		_ = conn.Close() // ignore error — shutting down anyway
-		ct.wg.Done()
-		delete(ct.conns, conn)
-	}
-}
-
-func (ct *ConnTracker) Prune() {
-	ct.mu.Lock()
-	defer ct.mu.Unlock()
-	for conn := range ct.conns {
-		if !isAlive(conn) {
-			_ = conn.Close() // ignore error — shutting down anyway
-			ct.wg.Done()
-			delete(ct.conns, conn)
-		}
-	}
-}
-
-// wait blocks until all tracked connections have completed.
-func (ct *ConnTracker) Wait() {
-	ct.wg.Wait()
 }

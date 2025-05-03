@@ -87,6 +87,20 @@ func (api JsonAPI) PlayedSoFar(plays []play) string {
 	return marshalOrPanic(message)
 }
 
+func (api JsonAPI) TrickWinner(playerID int) string {
+
+	msg := fmt.Sprintf("Player %d won the trick.", playerID)
+
+	data := struct {
+		PlayerID int    `json:"playerID"`
+		Action   string `json:"action"`
+	}{playerID, "won trick"}
+
+	message := Envelope{Type: "trickWinner", Data: data, Message: msg}
+
+	return marshalOrPanic(message)
+}
+
 func (api JsonAPI) TricksSoFar(evenScore int, oddScore int) string {
 
 	msg := fmt.Sprintf("Even trick score: %d  |  Odd trick score: %d", evenScore, oddScore)
@@ -124,6 +138,20 @@ func (api JsonAPI) DealerUpdate(playerID int) string {
 		Dealer: playerID,
 	}
 	message := Envelope{Type: "dealerUpdate", Data: data, Message: msg}
+	return marshalOrPanic(message)
+}
+
+func (api JsonAPI) PlayerPassed(playerID int) string {
+
+	msg := fmt.Sprintf("Player %d Passed.", playerID)
+
+	data := struct {
+		PlayerID int    `json:"playerID"`
+		Action   string `json:"action"`
+	}{playerID, "passed"}
+
+	message := Envelope{Type: "playerPassed", Data: data, Message: msg}
+
 	return marshalOrPanic(message)
 }
 

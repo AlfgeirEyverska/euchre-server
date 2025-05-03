@@ -1,9 +1,12 @@
 package main
 
 import (
+	"context"
 	"euchre/server"
 	"log"
 	"os"
+	"os/signal"
+	"syscall"
 )
 
 func setUpLogger() *os.File {
@@ -26,10 +29,24 @@ func main() {
 
 	logFile := setUpLogger()
 	defer logFile.Close()
+
+	// Context probably needs to return here
+	ctx, cancel := context.WithCancel(context.Background())
+
+	signalChan := make(chan os.Signal, 1)
+	signal.Notify(signalChan, os.Interrupt, syscall.SIGTERM)
+	go func() {
+		<-signalChan
+		log.Println("Shutdown signal received...")
+		cancel()
+	}()
+
 	euchreServer := server.NewServer()
 
-	go euchreServer.AcceptConns()
-	go euchreServer.StartGames()
+	go euchreServer.AcceptConns(ctx)
+	go euchreServer.StartGames(ctx)
 
+	//moved here
+	<-ctx.Done()
 	euchreServer.GracefulShutdown()
 }

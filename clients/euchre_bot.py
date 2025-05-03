@@ -103,7 +103,7 @@ def play(id):
                     print("Unknown message type: ", message["type"])
 
             # time.sleep(1)
-            time.sleep(0.05)
+            # time.sleep(0.05)
 
 
 

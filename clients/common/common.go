@@ -45,7 +45,7 @@ type playJSON struct {
 
 func (pInfo playerInfo) String() string {
 	message := fmt.Sprintln("Player ", pInfo.PlayerID)
-	// message += fmt.Sprintln(pInfo.Flip, " was flipped.")
+	message += fmt.Sprintf("Dealer flipped the %s\n", pInfo.Flip)
 	message += fmt.Sprintln("Trump: ", pInfo.Trump)
 	message += fmt.Sprint("Your cards are: | ")
 	for _, v := range pInfo.Hand {
@@ -83,46 +83,6 @@ func HandleRequestForResponse(buf json.RawMessage) RequestForResponse {
 	log.Println(message)
 	return message
 }
-
-// func HandleOrderOrPass(buf json.RawMessage) requestForResponse {
-// 	message := requestForResponse{}
-// 	err := json.Unmarshal(buf, &message)
-// 	if err != nil {
-// 		log.Fatalln(err)
-// 	}
-// 	log.Println(message)
-// 	return message
-// }
-
-// func HandlePlayCard(buf json.RawMessage) requestForResponse {
-// 	message := requestForResponse{}
-// 	err := json.Unmarshal(buf, &message)
-// 	if err != nil {
-// 		log.Fatalln(err)
-// 	}
-// 	log.Println(message)
-// 	return message
-// }
-
-// func HandleDealerDiscard(buf json.RawMessage) requestForResponse {
-// 	message := requestForResponse{}
-// 	err := json.Unmarshal(buf, &message)
-// 	if err != nil {
-// 		log.Fatalln(err)
-// 	}
-// 	log.Println(message)
-// 	return message
-// }
-
-// func HandleGoItAlone(buf json.RawMessage) requestForResponse {
-// 	message := requestForResponse{}
-// 	err := json.Unmarshal(buf, &message)
-// 	if err != nil {
-// 		log.Fatalln(err)
-// 	}
-// 	log.Println(message)
-// 	return message
-// }
 
 func HandleError(buf json.RawMessage) string {
 	var message string
