@@ -13,6 +13,8 @@ import (
 	"time"
 )
 
+// TODO: Fix bug where I no longer close the connection properly and the clients hang on input.
+
 // Through trial and error (running 3 concurrent 1000 game trials)
 // I have determined that the network seems to be a bottleneck and
 // My laptop can only handle 2 concurrent games, continuously
