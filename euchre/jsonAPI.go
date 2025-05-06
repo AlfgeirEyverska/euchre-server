@@ -7,31 +7,6 @@ import (
 	"log"
 )
 
-// type Envelope struct {
-// 	Type    string `json:"type"`
-// 	Data    any    `json:"data"`
-// 	Message string `json:"message"`
-// }
-
-// type SuitOrdered struct {
-// 	PlayerID   int    `json:"playerID"`
-// 	Action     string `json:"action"`
-// 	Trump      string `json:"trump"`
-// 	GoingAlone bool   `json:"goingAlone"`
-// }
-
-// type PlayerInfo struct {
-// 	PlayerID int      `json:"playerID"`
-// 	Trump    string   `json:"trump"`
-// 	Flip     string   `json:"flip"`
-// 	Hand     []string `json:"hand"`
-// }
-
-// type RequestForResponse struct {
-// 	Info     PlayerInfo     `json:"playerInfo"`
-// 	ValidRes map[int]string `json:"validResponses"`
-// }
-
 type JsonAPIMessager struct{}
 
 // Errors
@@ -56,9 +31,7 @@ func (jsonApi JsonAPIMessager) DealerMustOrder() string {
 func (jsonApi JsonAPIMessager) GameOver(winner string) string {
 	msg := fmt.Sprint("Game Over! ", winner, " Team Won!")
 
-	data := struct {
-		Winner string
-	}{winner}
+	data := api.WinnerUpdate{Winner: winner}
 
 	message := api.Envelope{Type: "gameOver", Data: data, Message: msg}
 
@@ -88,16 +61,14 @@ func (jsonApi JsonAPIMessager) TrickWinner(playerID int) string {
 
 	msg := fmt.Sprintf("Player %d won the trick.", playerID)
 
-	data := struct {
-		PlayerID int    `json:"playerID"`
-		Action   string `json:"action"`
-	}{playerID, "won trick"}
+	data := api.TrickWinnerUpdate{PlayerID: playerID, Action: "won trick"}
 
 	message := api.Envelope{Type: "trickWinner", Data: data, Message: msg}
 
 	return marshalOrPanic(message)
 }
 
+// TODO: declare type in api.go
 func (jsonApi JsonAPIMessager) TricksSoFar(evenScore int, oddScore int) string {
 
 	msg := fmt.Sprintf("Even trick score: %d  |  Odd trick score: %d", evenScore, oddScore)
@@ -112,6 +83,7 @@ func (jsonApi JsonAPIMessager) TricksSoFar(evenScore int, oddScore int) string {
 	return marshalOrPanic(message)
 }
 
+// TODO: declare type in api.go
 func (jsonApi JsonAPIMessager) UpdateScore(evenScore int, oddScore int) string {
 
 	msg := fmt.Sprintf("Even score: %d  |  Odd score: %d", evenScore, oddScore)
@@ -125,16 +97,11 @@ func (jsonApi JsonAPIMessager) UpdateScore(evenScore int, oddScore int) string {
 	return marshalOrPanic(message)
 }
 
-// TODO: replace with dealerupdate type
 func (jsonApi JsonAPIMessager) DealerUpdate(playerID int) string {
 
 	msg := fmt.Sprint("Player ", playerID, " is dealing.")
+	data := api.DealerUpdate{Dealer: playerID}
 
-	data := struct {
-		Dealer int `json:"dealer"`
-	}{
-		Dealer: playerID,
-	}
 	message := api.Envelope{Type: "dealerUpdate", Data: data, Message: msg}
 	return marshalOrPanic(message)
 }

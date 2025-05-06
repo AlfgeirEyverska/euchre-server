@@ -7,6 +7,8 @@ import (
 	"net"
 )
 
+// TODO: Finish refactor of the json api into this. Probably create constructors for everything to replace jsonAPI.go
+
 type Envelope struct {
 	Type    string `json:"type"`
 	Data    any    `json:"data"`
@@ -39,6 +41,15 @@ type DealerUpdate struct {
 type PlayJSON struct {
 	PlayerID   int    `json:"playerID"`
 	CardPlayed string `json:"played"`
+}
+
+type WinnerUpdate struct {
+	Winner string `json:"winner"`
+}
+
+type TrickWinnerUpdate struct {
+	PlayerID int    `json:"playerID"`
+	Action   string `json:"action"`
 }
 
 func (pInfo PlayerInfo) String() string {

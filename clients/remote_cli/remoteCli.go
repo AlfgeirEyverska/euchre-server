@@ -3,9 +3,9 @@ package remotecli
 import (
 	"bufio"
 	"clients/bots"
-	client "clients/common"
 	"context"
 	"encoding/json"
+	"euchre/api"
 	"fmt"
 	"log"
 	"net"
@@ -46,7 +46,7 @@ func Play(ctx context.Context) {
 }
 
 func sendResponse(msgType string, res int, conn net.Conn) error {
-	_, err := conn.Write(client.EncodeResponse(msgType, res))
+	_, err := conn.Write(api.EncodeResponse(msgType, res))
 	if err != nil {
 		log.Println(err)
 		return err
@@ -79,7 +79,7 @@ func getIntInput() int {
 	}
 }
 
-func handleRFR(rfr client.RequestForResponse, message client.Envelope, conn net.Conn) error {
+func handleRFR(rfr api.RequestForResponse, message api.Envelope, conn net.Conn) error {
 	fmt.Printf("\n%s\n\n", rfr.Info)
 	fmt.Printf("%s\n\n", message.Message)
 	fmt.Printf("%s\n\n", validResponsesString(rfr.ValidRes))
@@ -94,7 +94,7 @@ func handleRFR(rfr client.RequestForResponse, message client.Envelope, conn net.
 
 func processMessage(buf []byte, conn net.Conn) {
 
-	var message client.Envelope
+	var message api.Envelope
 	if err := json.Unmarshal(buf, &message); err != nil {
 		log.Println("Original Unmarshal Failure: ", string(buf))
 		log.Println(err)
@@ -107,11 +107,11 @@ func processMessage(buf []byte, conn net.Conn) {
 
 	case "connectionCheck":
 
-		client.HandleConnectionCheck(conn)
+		api.HandleConnectionCheck(conn)
 
 	case "pickUpOrPass":
 
-		rfr := client.HandleRequestForResponse(message.Data)
+		rfr := api.HandleRequestForResponse(message.Data)
 		// fmt.Printf("\nDealer flipped: %s.\n", rfr.Info.Flip)
 		err := handleRFR(rfr, message, conn)
 		if err != nil {
@@ -120,7 +120,7 @@ func processMessage(buf []byte, conn net.Conn) {
 
 	case "orderOrPass":
 
-		rfr := client.HandleRequestForResponse(message.Data)
+		rfr := api.HandleRequestForResponse(message.Data)
 		// fmt.Printf("\nDealer flipped: %s.\n", rfr.Info.Flip)
 		err := handleRFR(rfr, message, conn)
 		if err != nil {
@@ -133,7 +133,7 @@ func processMessage(buf []byte, conn net.Conn) {
 
 	case "dealerDiscard":
 
-		rfr := client.HandleRequestForResponse(message.Data)
+		rfr := api.HandleRequestForResponse(message.Data)
 		err := handleRFR(rfr, message, conn)
 		if err != nil {
 			log.Println("Received error: ", err)
@@ -141,7 +141,7 @@ func processMessage(buf []byte, conn net.Conn) {
 
 	case "playCard":
 
-		rfr := client.HandleRequestForResponse(message.Data)
+		rfr := api.HandleRequestForResponse(message.Data)
 		err := handleRFR(rfr, message, conn)
 		if err != nil {
 			log.Println("Received error: ", err)
@@ -149,7 +149,7 @@ func processMessage(buf []byte, conn net.Conn) {
 
 	case "goItAlone":
 
-		rfr := client.HandleRequestForResponse(message.Data)
+		rfr := api.HandleRequestForResponse(message.Data)
 		err := handleRFR(rfr, message, conn)
 		if err != nil {
 			log.Println("Received error: ", err)
@@ -157,17 +157,17 @@ func processMessage(buf []byte, conn net.Conn) {
 
 	case "playerID":
 
-		myID := client.HandlePlayerID(message.Data)
+		myID := api.HandlePlayerID(message.Data)
 		fmt.Printf("You are Player %d\n\n", myID)
 
 	case "dealerUpdate":
 
-		du := client.HandleDealerUpdate(message.Data)
+		du := api.HandleDealerUpdate(message.Data)
 		fmt.Printf("Player %d is dealing.\n\n", du.Dealer)
 
 	case "suitOrdered":
 
-		so := client.HandleSuitOrdered(message.Data)
+		so := api.HandleSuitOrdered(message.Data)
 		aloneStr := "is not"
 		if so.GoingAlone {
 			aloneStr = "is"
@@ -176,7 +176,7 @@ func processMessage(buf []byte, conn net.Conn) {
 
 	case "plays":
 
-		plays := client.HandlePlays(message.Data)
+		plays := api.HandlePlays(message.Data)
 		lastPlay := plays[len(plays)-1]
 		fmt.Printf("Player %d played the %s.\n", lastPlay.PlayerID, lastPlay.CardPlayed)
 
@@ -186,26 +186,26 @@ func processMessage(buf []byte, conn net.Conn) {
 
 	case "trickScore":
 
-		tscore := client.HandleTrickScore(message.Data)
+		tscore := api.HandleTrickScore(message.Data)
 		fmt.Printf("\n################################################################\n")
 		fmt.Printf("\nEven trick score: %d  |  Odd trick score: %d\n", tscore["evenTrickScore"], tscore["oddTrickScore"])
 		fmt.Printf("\n################################################################\n\n")
 
 	case "updateScore":
 
-		score := client.HandleUpdateScore(message.Data)
+		score := api.HandleUpdateScore(message.Data)
 		fmt.Printf("\n################################################################\n")
 		fmt.Printf("\nEven score: %d  |  Odd score: %d\n", score["evenScore"], score["oddScore"])
 		fmt.Printf("\n################################################################\n\n")
 
 	case "error":
 
-		errMessage := client.HandleError(message.Data)
+		errMessage := api.HandleError(message.Data)
 		fmt.Println(errMessage)
 
 	case "gameOver":
 
-		winner := client.HandleGameOver(message.Data)
+		winner := api.HandleGameOver(message.Data)
 		if winner%2 == 0 {
 			fmt.Printf("Even team won!\n\n")
 			return
@@ -242,7 +242,7 @@ func handleMyConnection(ctx context.Context, done chan struct{}) {
 		return
 	}
 
-	client.SayHello(conn)
+	api.SayHello(conn)
 
 	reader := bufio.NewReader(conn)
 	updateChan := make(chan []byte, 10)
