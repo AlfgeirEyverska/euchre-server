@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"context"
 	"encoding/json"
+	"euchre/api"
 	"euchre/euchre"
 	"fmt"
 	"log"
@@ -13,19 +14,20 @@ import (
 	"time"
 )
 
-// TODO: Fix bug where I no longer close the connection properly and the clients hang on input.
-
 // Through trial and error (running 3 concurrent 1000 game trials)
 // I have determined that the network seems to be a bottleneck and
 // My laptop can only handle 2 concurrent games, continuously
 // 1 works the most efficiency and I get more throughput
 const MaxConcurrentGames = 10
 
+// Server assumes the responsibility of listening for and accepting connections, putting them in the connChan channel,
+// and tracking them with its ConnTracker
 type Server struct {
 	connChan chan net.Conn
 	tracker  *ConnTracker
 }
 
+// NewServer is a constructor that creates a new connChan and tracker
 func NewServer() *Server {
 
 	connChan := make(chan net.Conn, MaxConcurrentGames*euchre.NumPlayers)
@@ -38,7 +40,7 @@ func NewServer() *Server {
 
 }
 
-// acceptConns takes all incoming Connections from the net.Listener and puts them in connChan
+// AcceptConns takes all incoming Connections from the net.Listener and puts them in connChan
 func (s *Server) AcceptConns(ctx context.Context) {
 	listener := newGameListener()
 	defer listener.Close()
@@ -47,27 +49,33 @@ func (s *Server) AcceptConns(ctx context.Context) {
 	for {
 		select {
 		case <-ctx.Done():
+
 			log.Println("Shutting down AcceptConns...")
 			return
+
 		default:
+
 			conn, err := listener.Accept()
 			if err != nil {
 				log.Println("Connection accept error:", err)
 				continue
 			}
+
 			if !waitForHello(conn) {
 				fmt.Println("Never got a hello message, discarding connection")
 				conn.Close()
-				// ct.done(conn)
 				continue
 			}
+
 			s.tracker.add(conn)
 			log.Println("New connection accepted")
 			s.connChan <- conn
+
 		}
 	}
 }
 
+// StartGames monitors the number of active games and starts new ones if the server is not at capacity and players are trying to join
 func (s *Server) StartGames(ctx context.Context) {
 	var mu sync.Mutex
 	var numConcurrentGames int
@@ -75,8 +83,10 @@ func (s *Server) StartGames(ctx context.Context) {
 	for {
 		select {
 		case <-ctx.Done():
+
 			log.Println("Shutting down StartGames...")
 			return
+
 		default:
 
 			mu.Lock()
@@ -97,11 +107,19 @@ func (s *Server) StartGames(ctx context.Context) {
 			log.Println("New game starting. Active games:", numConcurrentGames)
 			mu.Unlock()
 
-			go startGame(ctx, playerConns, &mu, &numConcurrentGames, s.tracker)
+			// TODO: do something with gameCancel
+			gameCtx, gameCancel := context.WithCancel(ctx)
+
+			go func() {
+				defer gameCancel()
+				startGame(gameCtx, playerConns, &mu, &numConcurrentGames, s.tracker)
+			}()
+
 		}
 	}
 }
 
+// GracefulShutdown uses the server's connTracker to prune dead connections and wait on live ones to finish
 func (s *Server) GracefulShutdown() {
 	// <-ctx.Done()
 	fmt.Println("Intitiating shutdown. Waiting for games in progress to finish...")
@@ -110,7 +128,7 @@ func (s *Server) GracefulShutdown() {
 	fmt.Println("Graceful shutdown complete.")
 }
 
-// NewGameListener with these configurations is supposed to improve socket cleanup performance
+// newGameListener with these configurations is supposed to improve socket cleanup performance
 func newGameListener() net.Listener {
 	lc := net.ListenConfig{
 		Control: func(network, address string, c syscall.RawConn) error {
@@ -139,6 +157,8 @@ func newGameListener() net.Listener {
 // 	return ln
 // }
 
+// waitForHello sets a tight read deadline and waits for the conn to say hello
+// it times out and returns false or it gets a response and returns true
 func waitForHello(conn net.Conn) bool {
 	conn.SetReadDeadline(time.Now().Add(10 * time.Second))
 	reader := bufio.NewReader(conn)
@@ -152,8 +172,11 @@ func waitForHello(conn net.Conn) bool {
 	return true
 }
 
+// isAlive sends a connectionCheck message to the connection and waits for a response with a deadline
+// it times out or otherwise fails to read from the connection and returns false
+// or it gets a response and returns true
 func isAlive(conn net.Conn) bool {
-	message := euchre.Envelope{Type: "connectionCheck", Data: "Ping"}
+	message := api.Envelope{Type: "connectionCheck", Data: "Ping"}
 	res, _ := json.Marshal(message)
 	messageStr := fmt.Sprint(string(res), "\n")
 
@@ -176,6 +199,7 @@ func isAlive(conn net.Conn) bool {
 	return true
 }
 
+// makeLobby gets four healthy connections from the connChan channel and returns returns them in a slice
 func makeLobby(connChan chan net.Conn, ct *ConnTracker) []net.Conn {
 	playerConns := []net.Conn{}
 	for len(playerConns) < euchre.NumPlayers {
@@ -192,6 +216,7 @@ func makeLobby(connChan chan net.Conn, ct *ConnTracker) []net.Conn {
 	return playerConns
 }
 
+// startGame makes a PlayerConnectionManager to manage the 4 connection handlers it spins up and starts a game of euchre
 func startGame(ctx context.Context, playerConns []net.Conn, mu *sync.Mutex, numConcurrentGames *int, ct *ConnTracker) {
 
 	defer func() {
@@ -201,7 +226,8 @@ func startGame(ctx context.Context, playerConns []net.Conn, mu *sync.Mutex, numC
 		mu.Unlock()
 
 		for _, conn := range playerConns {
-			ct.done(conn) // conn closed in handleConnection
+			// conn closed in handleConnection
+			ct.done(conn)
 		}
 	}()
 
@@ -226,7 +252,8 @@ func startGame(ctx context.Context, playerConns []net.Conn, mu *sync.Mutex, numC
 	done := make(chan struct{})
 	go func() {
 		defer close(done)
-		game := euchre.NewEuchreGameState(&playerConnections, euchre.JsonAPI{})
+		// game := euchre.NewEuchreGameState(&playerConnections, euchre.JsonAPI{})
+		game := euchre.NewEuchreGameState(&playerConnections)
 		euchre.PlayEuchre(ctx, game)
 	}()
 

@@ -1,4 +1,4 @@
-package common
+package api
 
 import (
 	"encoding/json"
@@ -7,22 +7,20 @@ import (
 	"net"
 )
 
-var id int
-
 type Envelope struct {
-	Type    string          `json:"type"`
-	Data    json.RawMessage `json:"data"`
-	Message string          `json:"message"`
+	Type    string `json:"type"`
+	Data    any    `json:"data"`
+	Message string `json:"message"`
 }
 
-type suitOrdered struct {
+type SuitOrdered struct {
 	PlayerID   int    `json:"playerID"`
-	Trump      string `json:"trump"`
 	Action     string `json:"action"`
+	Trump      string `json:"trump"`
 	GoingAlone bool   `json:"goingAlone"`
 }
 
-type playerInfo struct {
+type PlayerInfo struct {
 	PlayerID int      `json:"playerID"`
 	Trump    string   `json:"trump"`
 	Flip     string   `json:"flip"`
@@ -30,32 +28,37 @@ type playerInfo struct {
 }
 
 type RequestForResponse struct {
-	Info     playerInfo     `json:"playerInfo"`
+	Info     PlayerInfo     `json:"playerInfo"`
 	ValidRes map[int]string `json:"validResponses"`
 }
 
-type dealerUpdate struct {
+type DealerUpdate struct {
 	Dealer int `json:"dealer"`
 }
 
-type playJSON struct {
+type PlayJSON struct {
 	PlayerID   int    `json:"playerID"`
 	CardPlayed string `json:"played"`
 }
 
-func (pInfo playerInfo) String() string {
+func (pInfo PlayerInfo) String() string {
 	message := fmt.Sprintln("Player ", pInfo.PlayerID)
 	message += fmt.Sprintf("Dealer flipped the %s\n", pInfo.Flip)
 	message += fmt.Sprintln("Trump: ", pInfo.Trump)
-	message += fmt.Sprint("Your cards are: | ")
+	message += "Your cards are: | "
 	for _, v := range pInfo.Hand {
 		message += fmt.Sprint(v, " | ")
 	}
 	return message
 }
 
-func HandleDealerUpdate(buf json.RawMessage) dealerUpdate {
-	var message dealerUpdate
+type responseEnvelope struct {
+	Type string `json:"type"`
+	Data any    `json:"data"`
+}
+
+func HandleDealerUpdate(buf json.RawMessage) DealerUpdate {
+	var message DealerUpdate
 	err := json.Unmarshal(buf, &message)
 	if err != nil {
 		log.Fatalln(err)
@@ -106,8 +109,8 @@ func HandleConnectionCheck(writer net.Conn) {
 	}
 }
 
-func HandleSuitOrdered(buf json.RawMessage) suitOrdered {
-	message := suitOrdered{}
+func HandleSuitOrdered(buf json.RawMessage) SuitOrdered {
+	message := SuitOrdered{}
 	err := json.Unmarshal(buf, &message)
 	if err != nil {
 		log.Fatalln(err)
@@ -116,8 +119,8 @@ func HandleSuitOrdered(buf json.RawMessage) suitOrdered {
 	return message
 }
 
-func HandlePlays(buf json.RawMessage) []playJSON {
-	message := []playJSON{}
+func HandlePlays(buf json.RawMessage) []PlayJSON {
+	message := []PlayJSON{}
 	err := json.Unmarshal(buf, &message)
 	if err != nil {
 		log.Fatalln(err)
@@ -154,7 +157,7 @@ func HandlePlayerID(buf json.RawMessage) int {
 		log.Fatalln(err)
 	}
 	log.Print("I am player ", p)
-	id = p
+	// id = p
 	return p
 }
 
@@ -182,11 +185,6 @@ func giveName(conn net.Conn, name string) {
 	if err != nil {
 		log.Fatalln(err)
 	}
-}
-
-type responseEnvelope struct {
-	Type string `json:"type"`
-	Data any    `json:"data"`
 }
 
 func SayHello(conn net.Conn) {

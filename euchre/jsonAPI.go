@@ -2,79 +2,76 @@ package euchre
 
 import (
 	"encoding/json"
+	"euchre/api"
 	"fmt"
 	"log"
 )
 
-type Envelope struct {
-	Type    string `json:"type"`
-	Data    any    `json:"data"`
-	Message string `json:"message"`
-}
+// type Envelope struct {
+// 	Type    string `json:"type"`
+// 	Data    any    `json:"data"`
+// 	Message string `json:"message"`
+// }
 
-type suitOrdered struct {
-	PlayerID   int    `json:"playerID"`
-	Action     string `json:"action"`
-	Trump      string `json:"trump"`
-	GoingAlone bool   `json:"goingAlone"`
-}
+// type SuitOrdered struct {
+// 	PlayerID   int    `json:"playerID"`
+// 	Action     string `json:"action"`
+// 	Trump      string `json:"trump"`
+// 	GoingAlone bool   `json:"goingAlone"`
+// }
 
-type playerInfo struct {
-	PlayerID int      `json:"playerID"`
-	Trump    string   `json:"trump"`
-	Flip     string   `json:"flip"`
-	Hand     []string `json:"hand"`
-}
+// type PlayerInfo struct {
+// 	PlayerID int      `json:"playerID"`
+// 	Trump    string   `json:"trump"`
+// 	Flip     string   `json:"flip"`
+// 	Hand     []string `json:"hand"`
+// }
 
-type requestForResponse struct {
-	Info     playerInfo     `json:"playerInfo"`
-	ValidRes map[int]string `json:"validResponses"`
-}
+// type RequestForResponse struct {
+// 	Info     PlayerInfo     `json:"playerInfo"`
+// 	ValidRes map[int]string `json:"validResponses"`
+// }
 
-type JsonAPI struct{}
+type JsonAPIMessager struct{}
 
 // Errors
 
-func (api JsonAPI) InvalidCard() string {
+func (jsonApi JsonAPIMessager) InvalidCard() string {
 	message := map[string]string{"type": "error", "data": "Invalid Card!"}
 	return marshalOrPanic(message)
 }
 
-func (api JsonAPI) InvalidInput() string {
+func (jsonApi JsonAPIMessager) InvalidInput() string {
 	message := map[string]string{"type": "error", "data": "Invalid input."}
 	return marshalOrPanic(message)
 }
 
-func (api JsonAPI) DealerMustOrder() string {
+func (jsonApi JsonAPIMessager) DealerMustOrder() string {
 	message := map[string]string{"type": "error", "data": "Dealer must choose a suit at this time."}
 	return marshalOrPanic(message)
 }
 
 // State updates
 
-func (api JsonAPI) GameOver(winner string) string {
+func (jsonApi JsonAPIMessager) GameOver(winner string) string {
 	msg := fmt.Sprint("Game Over! ", winner, " Team Won!")
 
 	data := struct {
 		Winner string
 	}{winner}
 
-	message := Envelope{Type: "gameOver", Data: data, Message: msg}
+	message := api.Envelope{Type: "gameOver", Data: data, Message: msg}
 
 	return marshalOrPanic(message)
 }
 
-func (api JsonAPI) PlayedSoFar(plays []play) string {
+// TODO: replace with PlayJSON type
+func (jsonApi JsonAPIMessager) PlayedSoFar(plays []play) string {
 	var msg string
 
-	type playJSON struct {
-		PlayerID   int    `json:"playerID"`
-		CardPlayed string `json:"played"`
-	}
-
-	jsonPlays := []playJSON{}
+	jsonPlays := []api.PlayJSON{}
 	for _, v := range plays {
-		currentPlay := playJSON{
+		currentPlay := api.PlayJSON{
 			PlayerID:   v.cardPlayer.ID,
 			CardPlayed: v.cardPlayed.String(),
 		}
@@ -82,12 +79,12 @@ func (api JsonAPI) PlayedSoFar(plays []play) string {
 		msg += fmt.Sprintf("Player %d played the %s. ", v.cardPlayer.ID, v.cardPlayed.String())
 	}
 
-	message := Envelope{Type: "plays", Data: jsonPlays, Message: msg}
+	message := api.Envelope{Type: "plays", Data: jsonPlays, Message: msg}
 
 	return marshalOrPanic(message)
 }
 
-func (api JsonAPI) TrickWinner(playerID int) string {
+func (jsonApi JsonAPIMessager) TrickWinner(playerID int) string {
 
 	msg := fmt.Sprintf("Player %d won the trick.", playerID)
 
@@ -96,12 +93,12 @@ func (api JsonAPI) TrickWinner(playerID int) string {
 		Action   string `json:"action"`
 	}{playerID, "won trick"}
 
-	message := Envelope{Type: "trickWinner", Data: data, Message: msg}
+	message := api.Envelope{Type: "trickWinner", Data: data, Message: msg}
 
 	return marshalOrPanic(message)
 }
 
-func (api JsonAPI) TricksSoFar(evenScore int, oddScore int) string {
+func (jsonApi JsonAPIMessager) TricksSoFar(evenScore int, oddScore int) string {
 
 	msg := fmt.Sprintf("Even trick score: %d  |  Odd trick score: %d", evenScore, oddScore)
 
@@ -110,12 +107,12 @@ func (api JsonAPI) TricksSoFar(evenScore int, oddScore int) string {
 		OddTrickScore  int `json:"oddTrickScore"`
 	}{evenScore, oddScore}
 
-	message := Envelope{Type: "trickScore", Data: data, Message: msg}
+	message := api.Envelope{Type: "trickScore", Data: data, Message: msg}
 
 	return marshalOrPanic(message)
 }
 
-func (api JsonAPI) UpdateScore(evenScore int, oddScore int) string {
+func (jsonApi JsonAPIMessager) UpdateScore(evenScore int, oddScore int) string {
 
 	msg := fmt.Sprintf("Even score: %d  |  Odd score: %d", evenScore, oddScore)
 
@@ -124,11 +121,12 @@ func (api JsonAPI) UpdateScore(evenScore int, oddScore int) string {
 		OddScore  int `json:"oddScore"`
 	}{evenScore, oddScore}
 
-	message := Envelope{Type: "updateScore", Data: data, Message: msg}
+	message := api.Envelope{Type: "updateScore", Data: data, Message: msg}
 	return marshalOrPanic(message)
 }
 
-func (api JsonAPI) DealerUpdate(playerID int) string {
+// TODO: replace with dealerupdate type
+func (jsonApi JsonAPIMessager) DealerUpdate(playerID int) string {
 
 	msg := fmt.Sprint("Player ", playerID, " is dealing.")
 
@@ -137,11 +135,11 @@ func (api JsonAPI) DealerUpdate(playerID int) string {
 	}{
 		Dealer: playerID,
 	}
-	message := Envelope{Type: "dealerUpdate", Data: data, Message: msg}
+	message := api.Envelope{Type: "dealerUpdate", Data: data, Message: msg}
 	return marshalOrPanic(message)
 }
 
-func (api JsonAPI) PlayerPassed(playerID int) string {
+func (jsonApi JsonAPIMessager) PlayerPassed(playerID int) string {
 
 	msg := fmt.Sprintf("Player %d Passed.", playerID)
 
@@ -150,115 +148,115 @@ func (api JsonAPI) PlayerPassed(playerID int) string {
 		Action   string `json:"action"`
 	}{playerID, "passed"}
 
-	message := Envelope{Type: "playerPassed", Data: data, Message: msg}
+	message := api.Envelope{Type: "playerPassed", Data: data, Message: msg}
 
 	return marshalOrPanic(message)
 }
 
-func (api JsonAPI) PlayerOrderedSuit(playerID int, trump suit) string {
+func (jsonApi JsonAPIMessager) PlayerOrderedSuit(playerID int, trump suit) string {
 
 	msg := fmt.Sprint("Player ", playerID, " Ordered ", trump, "s.")
 
-	data := suitOrdered{
+	data := api.SuitOrdered{
 		PlayerID:   playerID,
 		Action:     "Ordered",
 		Trump:      trump.String(),
 		GoingAlone: false}
 
-	message := Envelope{Type: "suitOrdered", Data: data, Message: msg}
+	message := api.Envelope{Type: "suitOrdered", Data: data, Message: msg}
 	return marshalOrPanic(message)
 }
 
-func (api JsonAPI) PlayerOrderedSuitAndGoingAlone(playerID int, trump suit) string {
+func (jsonApi JsonAPIMessager) PlayerOrderedSuitAndGoingAlone(playerID int, trump suit) string {
 
 	msg := fmt.Sprint("Player ", playerID, " Ordered ", trump, "s and is going it alone.")
 
-	data := suitOrdered{
+	data := api.SuitOrdered{
 		PlayerID:   playerID,
 		Action:     "Ordered",
 		Trump:      trump.String(),
 		GoingAlone: true}
 
-	message := Envelope{Type: "suitOrdered", Data: data, Message: msg}
+	message := api.Envelope{Type: "suitOrdered", Data: data, Message: msg}
 	return marshalOrPanic(message)
 }
 
 // Requests for Response
 
-func (api JsonAPI) PlayCard(playerID int, trump suit, flip card, hand deck, validCards deck, validResponses map[int]string) string {
+func (jsonApi JsonAPIMessager) PlayCard(playerID int, trump suit, flip card, hand deck, validCards deck, validResponses map[int]string) string {
 	msg := "It is your turn. What would you like to play?"
 
-	pi := playerInfo{playerID, trump.String(), flip.String(), handToStrings(hand)}
+	pi := api.PlayerInfo{PlayerID: playerID, Trump: trump.String(), Flip: flip.String(), Hand: handToStrings(hand)}
 
-	data := requestForResponse{Info: pi, ValidRes: validResponses}
+	data := api.RequestForResponse{Info: pi, ValidRes: validResponses}
 
-	message := Envelope{Type: "playCard", Data: data, Message: msg}
+	message := api.Envelope{Type: "playCard", Data: data, Message: msg}
 
 	return marshalOrPanic(message)
 }
 
-func (api JsonAPI) DealerDiscard(playerID int, trump suit, flip card, hand deck, validResponses map[int]string) string {
+func (jsonApi JsonAPIMessager) DealerDiscard(playerID int, trump suit, flip card, hand deck, validResponses map[int]string) string {
 
 	msg := "You must discard."
 
-	pi := playerInfo{playerID, trump.String(), flip.String(), handToStrings(hand)}
+	pi := api.PlayerInfo{PlayerID: playerID, Trump: trump.String(), Flip: flip.String(), Hand: handToStrings(hand)}
 
-	data := requestForResponse{pi, validResponses}
+	data := api.RequestForResponse{Info: pi, ValidRes: validResponses}
 
-	message := Envelope{Type: "dealerDiscard", Data: data, Message: msg}
+	message := api.Envelope{Type: "dealerDiscard", Data: data, Message: msg}
 
 	return marshalOrPanic(message)
 }
 
-func (api JsonAPI) PickUpOrPass(playerID int, trump suit, flip card, hand deck, validResponses map[int]string) string {
+func (jsonApi JsonAPIMessager) PickUpOrPass(playerID int, trump suit, flip card, hand deck, validResponses map[int]string) string {
 
 	msg := "Tell the dealer to pick it up or pass."
 
-	pi := playerInfo{
+	pi := api.PlayerInfo{
 		PlayerID: playerID,
 		Trump:    trump.String(),
 		Flip:     flip.String(),
 		Hand:     handToStrings(hand),
 	}
 
-	data := requestForResponse{pi, validResponses}
+	data := api.RequestForResponse{Info: pi, ValidRes: validResponses}
 
-	message := Envelope{Type: "pickUpOrPass", Data: data, Message: msg}
+	message := api.Envelope{Type: "pickUpOrPass", Data: data, Message: msg}
 
 	return marshalOrPanic(message)
 }
 
-func (api JsonAPI) OrderOrPass(playerID int, trump suit, flip card, hand deck, validResponses map[int]string) string {
+func (jsonApi JsonAPIMessager) OrderOrPass(playerID int, trump suit, flip card, hand deck, validResponses map[int]string) string {
 
 	msg := fmt.Sprint(flip.suit, "s are out. Order a suit or pass.")
 
-	pi := playerInfo{
+	pi := api.PlayerInfo{
 		PlayerID: playerID,
 		Trump:    trump.String(),
 		Flip:     flip.String(),
 		Hand:     handToStrings(hand),
 	}
 
-	data := requestForResponse{pi, validResponses}
+	data := api.RequestForResponse{Info: pi, ValidRes: validResponses}
 
-	message := Envelope{Type: "orderOrPass", Data: data, Message: msg}
+	message := api.Envelope{Type: "orderOrPass", Data: data, Message: msg}
 	return marshalOrPanic(message)
 }
 
-func (api JsonAPI) GoItAlone(playerID int, trump suit, flip card, hand deck, validResponses map[int]string) string {
+func (jsonApi JsonAPIMessager) GoItAlone(playerID int, trump suit, flip card, hand deck, validResponses map[int]string) string {
 
 	msg := "Would you like to go it alone?"
 
-	pi := playerInfo{
+	pi := api.PlayerInfo{
 		PlayerID: playerID,
 		Trump:    trump.String(),
 		Flip:     flip.String(),
 		Hand:     handToStrings(hand),
 	}
 
-	data := requestForResponse{pi, validResponses}
+	data := api.RequestForResponse{Info: pi, ValidRes: validResponses}
 
-	message := Envelope{Type: "goItAlone", Data: data, Message: msg}
+	message := api.Envelope{Type: "goItAlone", Data: data, Message: msg}
 
 	return marshalOrPanic(message)
 }
@@ -280,3 +278,145 @@ func handToStrings(hand deck) []string {
 	}
 	return strs
 }
+
+/*
+
+// messageGenerator allows for the jsonAPI to be replaced with a textAPI, but this is
+// getting replaced with the remoteCLI client
+// this may be depricated and something that could be refactored out
+// type messageGenerator interface {
+// 	InvalidCard() string
+// 	InvalidInput() string
+// 	PlayCard(int, suit, card, deck, deck, map[int]string) string
+// 	DealerDiscard(int, suit, card, deck, map[int]string) string
+// 	PickUpOrPass(int, suit, card, deck, map[int]string) string
+// 	OrderOrPass(int, suit, card, deck, map[int]string) string
+// 	PlayerPassed(int) string
+// 	GoItAlone(int, suit, card, deck, map[int]string) string
+// 	DealerMustOrder() string
+// 	PlayedSoFar([]play) string
+// 	TrickWinner(int) string
+// 	TricksSoFar(int, int) string
+// 	UpdateScore(int, int) string
+// 	DealerUpdate(int) string
+// 	PlayerOrderedSuit(int, suit) string
+// 	PlayerOrderedSuitAndGoingAlone(int, suit) string
+// 	GameOver(string) string
+// }
+
+
+// textAPI.go
+package euchre
+
+import "fmt"
+
+type TextAPI struct{}
+
+func (api TextAPI) InvalidCard() string {
+	return "Invalid Card!"
+}
+
+func (api TextAPI) InvalidInput() string {
+	return "##############\nInvalid input.\n##############"
+}
+
+func (api TextAPI) PlayCard(playerID int, trump suit, flip card, hand deck) string {
+	message := fmt.Sprintln("\n\n\nPlayer ", playerID)
+	message += fmt.Sprintln(trump, "s are trump")
+	message += fmt.Sprintln("Your playable cards are:\n", hand, "\nWhat would you like to play?")
+
+	message += "Press | "
+	for i, v := range hand {
+		prettyIdx := fmt.Sprint(i + 1)
+		message += fmt.Sprint(prettyIdx, " For ", v, " | ")
+	}
+	return message
+}
+
+func (api TextAPI) DealerDiscard(playerID int, trump suit, flip card, hand deck) string {
+	message := fmt.Sprintln("\n\n\nPlayer ", playerID)
+	message += fmt.Sprintln("You are picking up ", flip)
+	message += fmt.Sprintln("Your cards are:\n", hand)
+	message += fmt.Sprintln("Discard | ")
+	for i := range hand {
+		message += fmt.Sprint(i+1, " for ", hand[i], " | ")
+	}
+	message += "\n"
+	return message
+}
+
+func (api TextAPI) PickUpOrPass(playerID int, trump suit, flip card, hand deck) string {
+	validResponses := map[string]string{"1": "Pass", "2": "Pick It Up", "3": "Pick It Up and Go It Alone"}
+
+	message := fmt.Sprintln("Player ", playerID)
+	message += fmt.Sprintln(flip, " was flipped.")
+	message += fmt.Sprintln("Your cards are:\n", hand)
+	message += "Press | "
+	for i := 1; i <= 3; i++ {
+		istr := fmt.Sprint(i)
+		message += fmt.Sprint(i, " to ", validResponses[istr], " | ")
+	}
+	return message
+}
+
+func (api TextAPI) OrderOrPass(playerID int, trump suit, flip card, hand deck) string {
+	rs := flip.suit.remainingSuits()
+	validResponses := make(map[string]string)
+	responseSuits := make(map[string]suit)
+	validResponses["1"] = "Pass"
+	for i := 0; i < len(rs); i++ {
+		j := i + 2
+		validResponses[fmt.Sprint(j)] = fmt.Sprint(rs[i])
+		responseSuits[fmt.Sprint(j)] = rs[i]
+	}
+
+	message := fmt.Sprintln("\n\n\nPlayer ", playerID)
+	message += fmt.Sprintln(flip.suit, "s are out.")
+	message += fmt.Sprintln("Your cards are:\n", hand)
+	message += fmt.Sprint("Press: | ", 1, " to ", validResponses["1"], " | ")
+	for i := 2; i <= len(validResponses); i++ {
+		message += fmt.Sprint(i, " for ", validResponses[fmt.Sprint(i)], "s | ")
+	}
+	return message
+}
+
+func (api TextAPI) GoItAlone(playerID int) string {
+	message := fmt.Sprintln("Player ", playerID)
+	message += fmt.Sprintln("Would you like to go it alone?")
+	message += fmt.Sprintln("Press: 1 for Yes. 2 for No")
+	return message
+}
+
+func (api TextAPI) DealerMustOrder() string {
+	return "Dealer must choose a suit at this time."
+}
+
+func (api TextAPI) PlayedSoFar(plays []play) string {
+	return fmt.Sprintln(plays, "\nPlayed so far")
+}
+
+func (api TextAPI) TricksSoFar(evenScore int, oddScore int) string {
+	return fmt.Sprintln("Even Trick Score ", evenScore, " | Odd Trick Score", oddScore)
+}
+
+func (api TextAPI) UpdateScore(evenScore int, oddScore int) string {
+	return fmt.Sprintln("Even team score: ", evenScore, "\n", "Odd team score: ", oddScore)
+}
+
+func (api TextAPI) DealerUpdate(playerID int) string {
+	return fmt.Sprint("##############\n\n Player ", playerID, " is dealing.\n\n##############")
+}
+
+func (api TextAPI) PlayerOrderedSuit(playerID int, trump suit) string {
+	return fmt.Sprint("Player ", playerID, " Ordered ", trump, "s")
+}
+
+func (api TextAPI) PlayerOrderedSuitAndGoingAlone(playerID int, trump suit) string {
+	return fmt.Sprint("Player ", playerID, " ordered ", trump, "s and is going it alone")
+}
+
+func (api TextAPI) GameOver(winner string) string {
+	return fmt.Sprint("Game Over! ", winner, " Team Won!")
+}
+
+*/

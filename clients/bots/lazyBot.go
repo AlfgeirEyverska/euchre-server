@@ -2,9 +2,9 @@ package bots
 
 import (
 	"bufio"
-	client "clients/common"
 	"context"
 	"encoding/json"
+	"euchre/api"
 	"log"
 	"net"
 )
@@ -21,7 +21,7 @@ func LazyBot(doneChan chan int, ctx context.Context, cancel context.CancelFunc) 
 	}
 	defer conn.Close()
 
-	client.SayHello(conn)
+	api.SayHello(conn)
 
 	reader := bufio.NewReader(conn)
 
@@ -37,7 +37,7 @@ func LazyBot(doneChan chan int, ctx context.Context, cancel context.CancelFunc) 
 				return
 			}
 
-			var message client.Envelope
+			var message api.Envelope
 			err = json.Unmarshal(buf, &message)
 			if err != nil {
 				log.Println("Original Unmarshal Failure: ", string(buf))
@@ -49,62 +49,62 @@ func LazyBot(doneChan chan int, ctx context.Context, cancel context.CancelFunc) 
 
 			switch message.Type {
 			case "connectionCheck":
-				client.HandleConnectionCheck(conn)
+				api.HandleConnectionCheck(conn)
 			case "pickUpOrPass":
-				client.HandlePickUpOrPass(message.Data)
-				_, err = conn.Write(client.EncodeResponse(message.Type, 1))
+				api.HandlePickUpOrPass(message.Data)
+				_, err = conn.Write(api.EncodeResponse(message.Type, 1))
 				if err != nil {
 					log.Println(err)
 					return
 				}
 			case "orderOrPass":
-				client.HandleRequestForResponse(message.Data)
-				// client.HandleOrderOrPass(message.Data)
-				_, err = conn.Write(client.EncodeResponse(message.Type, 2))
+				api.HandleRequestForResponse(message.Data)
+				// api.HandleOrderOrPass(message.Data)
+				_, err = conn.Write(api.EncodeResponse(message.Type, 2))
 				if err != nil {
 					log.Println(err)
 					return
 				}
 			case "dealerDiscard":
-				client.HandleRequestForResponse(message.Data)
-				// client.HandleDealerDiscard(message.Data)
-				_, err = conn.Write(client.EncodeResponse(message.Type, 1))
+				api.HandleRequestForResponse(message.Data)
+				// api.HandleDealerDiscard(message.Data)
+				_, err = conn.Write(api.EncodeResponse(message.Type, 1))
 				if err != nil {
 					log.Println(err)
 					return
 				}
 			case "playCard":
-				client.HandleRequestForResponse(message.Data)
-				// client.HandlePlayCard(message.Data)
-				_, err = conn.Write(client.EncodeResponse(message.Type, 1))
+				api.HandleRequestForResponse(message.Data)
+				// api.HandlePlayCard(message.Data)
+				_, err = conn.Write(api.EncodeResponse(message.Type, 1))
 				if err != nil {
 					log.Println(err)
 					return
 				}
 			case "goItAlone":
-				client.HandleRequestForResponse(message.Data)
-				// client.HandleGoItAlone(message.Data)
-				_, err = conn.Write(client.EncodeResponse(message.Type, 2))
+				api.HandleRequestForResponse(message.Data)
+				// api.HandleGoItAlone(message.Data)
+				_, err = conn.Write(api.EncodeResponse(message.Type, 2))
 				if err != nil {
 					log.Println(err)
 					return
 				}
 			case "playerID":
-				client.HandlePlayerID(message.Data)
+				api.HandlePlayerID(message.Data)
 			case "dealerUpdate":
-				client.HandleDealerUpdate(message.Data)
+				api.HandleDealerUpdate(message.Data)
 			case "suitOrdered":
-				client.HandleSuitOrdered(message.Data)
+				api.HandleSuitOrdered(message.Data)
 			case "plays":
-				client.HandlePlays(message.Data)
+				api.HandlePlays(message.Data)
 			case "trickScore":
-				client.HandleTrickScore(message.Data)
+				api.HandleTrickScore(message.Data)
 			case "updateScore":
-				client.HandleUpdateScore(message.Data)
+				api.HandleUpdateScore(message.Data)
 			case "error":
-				client.HandleError(message.Data)
+				api.HandleError(message.Data)
 			case "gameOver":
-				res := client.HandleGameOver(message.Data)
+				res := api.HandleGameOver(message.Data)
 				doneChan <- res
 				return
 			default:

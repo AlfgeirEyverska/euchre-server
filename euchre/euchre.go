@@ -12,9 +12,12 @@ func PlayEuchre(ctx context.Context, gameState euchreGameState) {
 	for {
 		select {
 		case <-ctx.Done():
+
 			log.Println("Game context cancelled somewhere")
 			return
+
 		default:
+
 			if gameState.GameOver() {
 				log.Println("Game Over!")
 				return
@@ -32,8 +35,6 @@ func PlayEuchre(ctx context.Context, gameState euchreGameState) {
 			} else {
 				gameState.EstablishTrump()
 			}
-
-			// gameState.ResetFirstPlayer()
 
 			log.Println("Play 5 tricks!")
 			gameState.Play5Tricks()

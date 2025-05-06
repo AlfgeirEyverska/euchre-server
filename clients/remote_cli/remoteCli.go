@@ -12,6 +12,39 @@ import (
 	"time"
 )
 
+func Play(ctx context.Context) {
+	fmt.Printf("################################################################\n")
+	fmt.Println("                 Let's Play Some Euchre!")
+	fmt.Printf("################################################################\n\n")
+
+	// Set up bots
+	doneChans := []chan int{}
+	for i := range 3 {
+
+		log.Println("Starting bot ", i)
+		doneChan := make(chan int)
+
+		go bots.RandomBot(doneChan, ctx)
+		// go bots.LazyBot(doneChan, ctx, cancel)
+
+		doneChans = append(doneChans, doneChan)
+	}
+
+	// Wait to make sure the bots connect first
+	time.Sleep(500 * time.Millisecond)
+
+	done := make(chan struct{})
+	go handleMyConnection(ctx, done)
+
+	select {
+	case <-done:
+		log.Println("Game finished normally")
+	case <-ctx.Done():
+		log.Println("Context cancelled")
+	}
+	fmt.Println("Game Over!!")
+}
+
 func sendResponse(msgType string, res int, conn net.Conn) error {
 	_, err := conn.Write(client.EncodeResponse(msgType, res))
 	if err != nil {
@@ -33,7 +66,7 @@ func validResponsesString(validRes map[int]string) string {
 	return message
 }
 
-func getInput() int {
+func getIntInput() int {
 	var response int
 	for {
 		_, err := fmt.Scanf("%d", &response)
@@ -51,10 +84,9 @@ func handleRFR(rfr client.RequestForResponse, message client.Envelope, conn net.
 	fmt.Printf("%s\n\n", message.Message)
 	fmt.Printf("%s\n\n", validResponsesString(rfr.ValidRes))
 
-	response := getInput()
+	response := getIntInput()
 
-	err := sendResponse(message.Type, response, conn)
-	if err != nil {
+	if err := sendResponse(message.Type, response, conn); err != nil {
 		return err
 	}
 	return nil
@@ -63,8 +95,7 @@ func handleRFR(rfr client.RequestForResponse, message client.Envelope, conn net.
 func processMessage(buf []byte, conn net.Conn) {
 
 	var message client.Envelope
-	err := json.Unmarshal(buf, &message)
-	if err != nil {
+	if err := json.Unmarshal(buf, &message); err != nil {
 		log.Println("Original Unmarshal Failure: ", string(buf))
 		log.Println(err)
 		return
@@ -204,8 +235,6 @@ func drainChannel(updateChan chan []byte, conn net.Conn) {
 	}
 }
 
-// TODO: fix the error where a pass was misinterpreted as a pick it up
-// TODO: Consider adding broadcast for who won the trick
 func handleMyConnection(ctx context.Context, done chan struct{}) {
 	conn, err := net.Dial("tcp", "localhost:8080")
 	if err != nil {
@@ -230,14 +259,15 @@ func handleMyConnection(ctx context.Context, done chan struct{}) {
 	go func() {
 		defer close(updateChan)
 		for {
+			fmt.Println("WAITING FOR INPUT")
 			select {
 			case <-ctx.Done():
 				return
 			default:
 				buf, err := reader.ReadBytes('\n')
 				if err != nil {
+					fmt.Println(err)
 					log.Println(err)
-					// cancel()
 					return
 				}
 				updateChan <- buf
@@ -255,40 +285,7 @@ func handleMyConnection(ctx context.Context, done chan struct{}) {
 				return
 			}
 			processMessage(buf, conn)
-			time.Sleep(750 * time.Millisecond)
+			time.Sleep(650 * time.Millisecond)
 		}
 	}
-}
-
-func Play(ctx context.Context) {
-	fmt.Printf("################################################################\n")
-	fmt.Println("                 Let's Play Some Euchre!")
-	fmt.Printf("################################################################\n\n")
-
-	// Set up bots
-	doneChans := []chan int{}
-	for i := range 3 {
-
-		log.Println("Starting bot ", i)
-		doneChan := make(chan int)
-
-		go bots.RandomBot(doneChan, ctx)
-		// go bots.LazyBot(doneChan, ctx, cancel)
-
-		doneChans = append(doneChans, doneChan)
-	}
-
-	// Wait to make sure the bots connect first
-	time.Sleep(500 * time.Millisecond)
-
-	done := make(chan struct{})
-	go handleMyConnection(ctx, done)
-
-	select {
-	case <-done:
-		log.Println("Game finished normally")
-	case <-ctx.Done():
-		log.Println("Context cancelled")
-	}
-	fmt.Println("Game Over!!")
 }

@@ -30,7 +30,6 @@ func main() {
 	logFile := setUpLogger()
 	defer logFile.Close()
 
-	// Context probably needs to return here
 	ctx, cancel := context.WithCancel(context.Background())
 
 	signalChan := make(chan os.Signal, 1)
@@ -46,7 +45,6 @@ func main() {
 	go euchreServer.AcceptConns(ctx)
 	go euchreServer.StartGames(ctx)
 
-	//moved here
 	<-ctx.Done()
 	euchreServer.GracefulShutdown()
 }

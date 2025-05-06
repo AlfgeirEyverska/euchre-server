@@ -3,7 +3,7 @@ package server
 import (
 	"context"
 	"encoding/json"
-	"euchre/euchre"
+	"euchre/api"
 	"fmt"
 	"net"
 	"time"
@@ -19,9 +19,10 @@ type playerConnection struct {
 
 // name          string
 
+// PlayerConnectionManager fulfils the api interface needed for euchreGameState and handles the playerConnections
 type PlayerConnectionManager []*playerConnection
 
-// Euchre userInterface methods
+// Euchre api interface methods
 
 func (pcm PlayerConnectionManager) Broadcast(message string) {
 
@@ -51,29 +52,34 @@ func (pcm PlayerConnectionManager) AskPlayerForX(player int, message string) str
 
 // helper functions
 
+// GreetPlayers messages all of the players their respective player ids
 func (pcm *PlayerConnectionManager) GreetPlayers() {
 	for i := 0; i < len(*pcm); i++ {
 		pcm.greetPlayer(i)
 	}
 }
 
+// greetPlayer messages the player its player id
 func (pcm *PlayerConnectionManager) greetPlayer(playerID int) {
 
-	playerIDMsg := euchre.Envelope{Type: "playerID", Data: playerID}
+	playerIDMsg := api.Envelope{
+		Type:    "playerID",
+		Data:    playerID,
+		Message: fmt.Sprintf("You are player %d\n", playerID),
+	}
 
 	message, _ := json.Marshal(playerIDMsg)
-	messageStr := string(message)
 
-	pcm.MessagePlayer(playerID, messageStr)
+	pcm.MessagePlayer(playerID, string(message))
 }
 
 func handleConnection(ctx context.Context, playerConn *playerConnection) {
 
 	defer func() {
-		playerConn.conn.Close()
 		drainChannel(playerConn.broadcastChan, playerConn.conn)
 		drainChannel(playerConn.messageChan, playerConn.conn)
 		close(playerConn.responseChan)
+		playerConn.conn.Close()
 	}()
 
 	buf := make([]byte, 1024)
@@ -104,6 +110,7 @@ func handleConnection(ctx context.Context, playerConn *playerConnection) {
 				return
 			}
 
+			// TODO: consider using a buffered reader and reading until newlines. This seems to be working fine.
 			n, err := playerConn.conn.Read(buf)
 			if err != nil {
 				fmt.Println("Error Reading From Conn")
@@ -115,8 +122,8 @@ func handleConnection(ctx context.Context, playerConn *playerConnection) {
 	}
 }
 
-// drainChannel
-// This resulted in a ridiculous speedup. over the while len > 0 continue approach
+// drainChannel tries to send all of the messages queued in the channel before it is closed
+// This resulted in a ridiculous speedup over the while len > 0 continue approach
 func drainChannel(ch <-chan string, conn net.Conn) {
 	timeout := time.After(200 * time.Millisecond)
 	for {

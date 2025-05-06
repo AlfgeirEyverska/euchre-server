@@ -2,6 +2,7 @@ package euchre
 
 import "fmt"
 
+// debugCLI implements the api interface to allow for local debugging and may be deprecated
 type debugCLI struct{}
 
 func (cli debugCLI) AskPlayerForX(playerID int, message string) string {

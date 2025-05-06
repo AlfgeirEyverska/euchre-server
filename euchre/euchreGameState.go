@@ -7,34 +7,16 @@ import (
 	"log"
 )
 
-const targetScore = 10
+const targetScore = 1
 
 // TODO: Fix bug where trump is not reset after a trick
 
-type api interface {
+// api allows for the playerConnectionManager to be replaced with a debugCLI for local testing
+// this may be depricated and something that could be refactored out
+type euchreAPI interface {
 	AskPlayerForX(int, string) string
 	MessagePlayer(int, string)
 	Broadcast(string)
-}
-
-type messageGenerator interface {
-	InvalidCard() string
-	InvalidInput() string
-	PlayCard(int, suit, card, deck, deck, map[int]string) string
-	DealerDiscard(int, suit, card, deck, map[int]string) string
-	PickUpOrPass(int, suit, card, deck, map[int]string) string
-	OrderOrPass(int, suit, card, deck, map[int]string) string
-	PlayerPassed(int) string
-	GoItAlone(int, suit, card, deck, map[int]string) string
-	DealerMustOrder() string
-	PlayedSoFar([]play) string
-	TrickWinner(int) string
-	TricksSoFar(int, int) string
-	UpdateScore(int, int) string
-	DealerUpdate(int) string
-	PlayerOrderedSuit(int, suit) string
-	PlayerOrderedSuitAndGoingAlone(int, suit) string
-	GameOver(string) string
 }
 
 type euchreGameState struct {
@@ -45,8 +27,8 @@ type euchreGameState struct {
 	evenTeamScore int
 	oddTeamScore  int
 	trump         suit
-	API           api
-	Messages      messageGenerator
+	API           euchreAPI
+	Messages      JsonAPIMessager
 	whoOrdered    int
 	discard       deck
 	flip          card
@@ -54,7 +36,8 @@ type euchreGameState struct {
 	goingItAlone  bool
 }
 
-func NewEuchreGameState(myAPI api, myMG messageGenerator) euchreGameState {
+// func NewEuchreGameState(myAPI api, myMG JsonAPI) euchreGameState {
+func NewEuchreGameState(myAPI euchreAPI) euchreGameState {
 	myDeck := newDeck()
 
 	myPlayers := make([]*player, NumPlayers)
@@ -72,7 +55,7 @@ func NewEuchreGameState(myAPI api, myMG messageGenerator) euchreGameState {
 		oddTeamScore:  0,
 		trump:         undefined,
 		API:           myAPI,
-		Messages:      myMG,
+		Messages:      JsonAPIMessager{},
 	}
 
 	return myGameState

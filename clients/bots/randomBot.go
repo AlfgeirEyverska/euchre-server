@@ -2,9 +2,9 @@ package bots
 
 import (
 	"bufio"
-	client "clients/common"
 	"context"
 	"encoding/json"
+	"euchre/api"
 	"log"
 	"math/rand"
 	"net"
@@ -24,7 +24,7 @@ func sendRandomResponse(messageType string, validResponses map[int]string, write
 	}
 	log.Println("Random n chosen: ", n)
 
-	response := client.EncodeResponse(messageType, n)
+	response := api.EncodeResponse(messageType, n)
 
 	log.Println("Message: ", response)
 	_, err := writer.Write(response)
@@ -47,7 +47,7 @@ func RandomBot(doneChan chan int, ctx context.Context) {
 		// cancel()
 	}()
 
-	client.SayHello(conn)
+	api.SayHello(conn)
 
 	reader := bufio.NewReader(conn)
 
@@ -63,7 +63,7 @@ func RandomBot(doneChan chan int, ctx context.Context) {
 				return
 			}
 
-			var message client.Envelope
+			var message api.Envelope
 			err = json.Unmarshal(buf, &message)
 			if err != nil {
 				log.Println("Original Unmarshal Failure: ", string(buf))
@@ -77,42 +77,42 @@ func RandomBot(doneChan chan int, ctx context.Context) {
 
 			switch message.Type {
 			case "connectionCheck":
-				client.HandleConnectionCheck(conn)
+				api.HandleConnectionCheck(conn)
 			case "pickUpOrPass":
-				res := client.HandlePickUpOrPass(message.Data)
+				res := api.HandlePickUpOrPass(message.Data)
 				sendRandomResponse(message.Type, res.ValidRes, conn)
 			case "orderOrPass":
-				res := client.HandleRequestForResponse(message.Data)
-				// res := client.HandleOrderOrPass(message.Data)
+				res := api.HandleRequestForResponse(message.Data)
+				// res := api.HandleOrderOrPass(message.Data)
 				sendRandomResponse(message.Type, res.ValidRes, conn)
 			case "dealerDiscard":
-				res := client.HandleRequestForResponse(message.Data)
-				// res := client.HandleDealerDiscard(message.Data)
+				res := api.HandleRequestForResponse(message.Data)
+				// res := api.HandleDealerDiscard(message.Data)
 				sendRandomResponse(message.Type, res.ValidRes, conn)
 			case "playCard":
-				res := client.HandleRequestForResponse(message.Data)
-				// res := client.HandlePlayCard(message.Data)
+				res := api.HandleRequestForResponse(message.Data)
+				// res := api.HandlePlayCard(message.Data)
 				sendRandomResponse(message.Type, res.ValidRes, conn)
 			case "goItAlone":
-				res := client.HandleRequestForResponse(message.Data)
-				// res := client.HandleGoItAlone(message.Data)
+				res := api.HandleRequestForResponse(message.Data)
+				// res := api.HandleGoItAlone(message.Data)
 				sendRandomResponse(message.Type, res.ValidRes, conn)
 			case "playerID":
-				client.HandlePlayerID(message.Data)
+				api.HandlePlayerID(message.Data)
 			case "dealerUpdate":
-				client.HandleDealerUpdate(message.Data)
+				api.HandleDealerUpdate(message.Data)
 			case "suitOrdered":
-				client.HandleSuitOrdered(message.Data)
+				api.HandleSuitOrdered(message.Data)
 			case "plays":
-				client.HandlePlays(message.Data)
+				api.HandlePlays(message.Data)
 			case "trickScore":
-				client.HandleTrickScore(message.Data)
+				api.HandleTrickScore(message.Data)
 			case "updateScore":
-				client.HandleUpdateScore(message.Data)
+				api.HandleUpdateScore(message.Data)
 			case "error":
-				client.HandleError(message.Data)
+				api.HandleError(message.Data)
 			case "gameOver":
-				res := client.HandleGameOver(message.Data)
+				res := api.HandleGameOver(message.Data)
 				doneChan <- res
 				return
 			default:
