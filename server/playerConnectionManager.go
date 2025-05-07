@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"euchre/api"
 	"fmt"
+	"log"
 	"net"
 	"time"
 )
@@ -130,13 +131,16 @@ func drainChannel(ch <-chan string, conn net.Conn) {
 		select {
 		case msg, ok := <-ch:
 			if !ok {
+				log.Println("Channel closed durning drainChannel")
 				return
 			}
 			conn.SetWriteDeadline(time.Now().Add(500 * time.Millisecond))
 			conn.Write([]byte(msg))
 		case <-timeout:
+			log.Println("Timeout durning drainChannel")
 			return
 		default:
+			// log.Println("Short circuit durning drainChannel")
 			return
 		}
 	}

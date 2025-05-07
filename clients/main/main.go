@@ -12,11 +12,12 @@ import (
 func main() {
 	logFile, err := os.OpenFile("euchreBot.log", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
 	if err != nil {
-		log.Fatal(err)
+		log.Println(err)
+		log.SetOutput(os.Stdout)
+	} else {
+		defer logFile.Close()
+		log.SetOutput(logFile)
 	}
-	defer logFile.Close()
-	// log.SetOutput(os.Stdout)
-	log.SetOutput(logFile)
 	log.SetFlags(log.LstdFlags | log.Lshortfile)
 
 	// Set up context

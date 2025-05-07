@@ -7,13 +7,14 @@ import (
 	"net"
 )
 
-func giveName(conn net.Conn, name string) {
+func giveName(conn net.Conn, name string) error {
 	playerIDMsg := map[string]string{"Name": name}
 	message, _ := json.Marshal(playerIDMsg)
 	_, err := conn.Write([]byte(message))
 	if err != nil {
-		log.Fatalln(err)
+		return err
 	}
+	return nil
 }
 
 func SayHello(conn net.Conn) {
@@ -29,7 +30,7 @@ func SayHello(conn net.Conn) {
 	}
 }
 
-func HandleConnectionCheck(writer net.Conn) {
+func HandleConnectionCheck(writer net.Conn) error {
 	message := "Pong"
 
 	msgBytes := api.EncodeResponse("connectionCheck", message)
@@ -37,6 +38,7 @@ func HandleConnectionCheck(writer net.Conn) {
 	log.Println("Connection Check Message: ", msgBytes)
 	_, err := writer.Write(msgBytes)
 	if err != nil {
-		log.Fatalln(err)
+		return err
 	}
+	return nil
 }

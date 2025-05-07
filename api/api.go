@@ -73,103 +73,98 @@ func (pInfo PlayerInfo) String() string {
 	return message
 }
 
-func HandleDealerUpdate(buf json.RawMessage) DealerUpdate {
+func HandleDealerUpdate(buf json.RawMessage) (DealerUpdate, error) {
 	var message DealerUpdate
 	err := json.Unmarshal(buf, &message)
 	if err != nil {
-		log.Fatalln(err)
+		return message, err
 	}
 	log.Println("Dealer is: ", message.Dealer)
-	return message
+	return message, nil
 }
 
-func HandleRequestForResponse(buf json.RawMessage) RequestForResponse {
-	message := RequestForResponse{}
+func HandleRequestForResponse(buf json.RawMessage) (RequestForResponse, error) {
+	var message RequestForResponse
 	err := json.Unmarshal(buf, &message)
 	if err != nil {
-		log.Fatalln(err)
+		return message, err
 	}
-	log.Println(message.Info)
-	return message
+	return message, nil
 }
 
-func HandleError(buf json.RawMessage) string {
+func HandleError(buf json.RawMessage) (string, error) {
 	var message string
 	err := json.Unmarshal(buf, &message)
 	if err != nil {
-		log.Fatalln(err)
+		return message, nil
 	}
 	log.Println(message)
-	return message
+	return message, nil
 }
 
-func HandleSuitOrdered(buf json.RawMessage) SuitOrdered {
-	message := SuitOrdered{}
+func HandleSuitOrdered(buf json.RawMessage) (SuitOrdered, error) {
+	var message SuitOrdered
 	err := json.Unmarshal(buf, &message)
 	if err != nil {
-		log.Fatalln(err)
+		return message, err
 	}
 	log.Println(message.Trump)
-	return message
+	return message, nil
 }
 
-func HandlePlays(buf json.RawMessage) []PlayJSON {
-	message := []PlayJSON{}
+func HandlePlays(buf json.RawMessage) ([]PlayJSON, error) {
+	var message []PlayJSON
 	err := json.Unmarshal(buf, &message)
 	if err != nil {
-		log.Fatalln(err)
+		return message, err
 	}
 	log.Println(message)
-	return message
+	return message, nil
 }
 
-func HandleTrickScore(buf json.RawMessage) map[string]int {
-	message := map[string]int{}
+func HandleTrickScore(buf json.RawMessage) (map[string]int, error) {
+	var message map[string]int
 	err := json.Unmarshal(buf, &message)
 	if err != nil {
-		log.Fatalln(err)
+		return message, err
 	}
 	log.Println(message)
-	return message
+	return message, nil
 }
 
-func HandleUpdateScore(buf json.RawMessage) map[string]int {
-	message := map[string]int{}
+func HandleUpdateScore(buf json.RawMessage) (map[string]int, error) {
+	var message map[string]int
 	err := json.Unmarshal(buf, &message)
 	if err != nil {
-		log.Fatalln(err)
+		return message, err
 	}
 	log.Println(message)
-	return message
+	return message, nil
 
 }
 
-func HandlePlayerID(buf json.RawMessage) int {
-	log.Print(string(buf))
-	var p int
-	if err := json.Unmarshal(buf, &p); err != nil {
-		log.Fatalln(err)
+func HandlePlayerID(buf json.RawMessage) (int, error) {
+	var pid int
+	if err := json.Unmarshal(buf, &pid); err != nil {
+		return pid, err
 	}
-	log.Print("I am player ", p)
+	log.Print("I am player ", pid)
 	// id = p
-	return p
+	return pid, nil
 }
 
-func HandleGameOver(buf json.RawMessage) int {
-	var message map[string]string
+func HandleGameOver(buf json.RawMessage) (int, error) {
+	var message WinnerUpdate
 	err := json.Unmarshal(buf, &message)
+
 	if err != nil {
-		log.Fatalln(err)
+		return 0, err
 	}
-	log.Println(message)
-	winner, ok := message["Winner"]
-	if !ok {
-		log.Fatalln("Could not determine winner")
+
+	if message.Winner == "Even" {
+		return 0, nil
 	}
-	if winner == "Even" {
-		return 0
-	}
-	return 1
+	return 1, nil
 }
 
 func EncodeResponse(messageType string, data any) []byte {

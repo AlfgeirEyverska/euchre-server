@@ -80,22 +80,37 @@ func RandomBot(doneChan chan int, ctx context.Context) {
 			case "connectionCheck":
 				clients.HandleConnectionCheck(conn)
 			case "pickUpOrPass":
-				res := api.HandleRequestForResponse(message.Data)
+				res, err := api.HandleRequestForResponse(message.Data)
+				if err != nil {
+					log.Println(err)
+				}
 				sendRandomResponse(message.Type, res.ValidRes, conn)
 			case "orderOrPass":
-				res := api.HandleRequestForResponse(message.Data)
+				res, err := api.HandleRequestForResponse(message.Data)
+				if err != nil {
+					log.Println(err)
+				}
 				// res := api.HandleOrderOrPass(message.Data)
 				sendRandomResponse(message.Type, res.ValidRes, conn)
 			case "dealerDiscard":
-				res := api.HandleRequestForResponse(message.Data)
+				res, err := api.HandleRequestForResponse(message.Data)
+				if err != nil {
+					log.Println(err)
+				}
 				// res := api.HandleDealerDiscard(message.Data)
 				sendRandomResponse(message.Type, res.ValidRes, conn)
 			case "playCard":
-				res := api.HandleRequestForResponse(message.Data)
+				res, err := api.HandleRequestForResponse(message.Data)
+				if err != nil {
+					log.Println(err)
+				}
 				// res := api.HandlePlayCard(message.Data)
 				sendRandomResponse(message.Type, res.ValidRes, conn)
 			case "goItAlone":
-				res := api.HandleRequestForResponse(message.Data)
+				res, err := api.HandleRequestForResponse(message.Data)
+				if err != nil {
+					log.Println(err)
+				}
 				// res := api.HandleGoItAlone(message.Data)
 				sendRandomResponse(message.Type, res.ValidRes, conn)
 			case "playerID":
@@ -113,7 +128,11 @@ func RandomBot(doneChan chan int, ctx context.Context) {
 			case "error":
 				api.HandleError(message.Data)
 			case "gameOver":
-				res := api.HandleGameOver(message.Data)
+				res, err := api.HandleGameOver(message.Data)
+				if err != nil {
+					log.Println(err)
+					continue
+				}
 				doneChan <- res
 				return
 			default:

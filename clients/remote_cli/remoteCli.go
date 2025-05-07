@@ -25,7 +25,7 @@ func Play(ctx context.Context) {
 		log.Println("Starting bot ", i)
 		doneChan := make(chan int)
 
-		go bots.RandomBot(doneChan, ctx)
+		go bots.LazyBot(doneChan, ctx)
 
 		doneChans = append(doneChans, doneChan)
 	}
@@ -46,9 +46,10 @@ func Play(ctx context.Context) {
 }
 
 func sendResponse(msgType string, res int, conn net.Conn) error {
-	_, err := conn.Write(api.EncodeResponse(msgType, res))
+	response := api.EncodeResponse(msgType, res)
+	log.Printf("sending %v to conn", api.EncodeResponse(msgType, res))
+	_, err := conn.Write(response)
 	if err != nil {
-		log.Println(err)
 		return err
 	}
 	return nil
@@ -100,6 +101,7 @@ func processMessage(buf []byte, conn net.Conn) {
 		log.Println(err)
 		return
 	}
+	log.Printf("%s : %s", message.Type, message.Message)
 
 	// ##############################################################################
 
@@ -111,19 +113,23 @@ func processMessage(buf []byte, conn net.Conn) {
 
 	case "pickUpOrPass":
 
-		rfr := api.HandleRequestForResponse(message.Data)
-		// fmt.Printf("\nDealer flipped: %s.\n", rfr.Info.Flip)
-		err := handleRFR(rfr, message, conn)
+		rfr, err := api.HandleRequestForResponse(message.Data)
 		if err != nil {
+			log.Println("Received error: ", err)
+		}
+
+		if err := handleRFR(rfr, message, conn); err != nil {
 			log.Println("Received error: ", err)
 		}
 
 	case "orderOrPass":
 
-		rfr := api.HandleRequestForResponse(message.Data)
-		// fmt.Printf("\nDealer flipped: %s.\n", rfr.Info.Flip)
-		err := handleRFR(rfr, message, conn)
+		rfr, err := api.HandleRequestForResponse(message.Data)
 		if err != nil {
+			log.Println("Received error: ", err)
+		}
+
+		if err := handleRFR(rfr, message, conn); err != nil {
 			log.Println("Received error: ", err)
 		}
 
@@ -133,41 +139,59 @@ func processMessage(buf []byte, conn net.Conn) {
 
 	case "dealerDiscard":
 
-		rfr := api.HandleRequestForResponse(message.Data)
-		err := handleRFR(rfr, message, conn)
+		rfr, err := api.HandleRequestForResponse(message.Data)
 		if err != nil {
+			log.Println("Received error: ", err)
+		}
+
+		if err := handleRFR(rfr, message, conn); err != nil {
 			log.Println("Received error: ", err)
 		}
 
 	case "playCard":
 
-		rfr := api.HandleRequestForResponse(message.Data)
-		err := handleRFR(rfr, message, conn)
+		rfr, err := api.HandleRequestForResponse(message.Data)
 		if err != nil {
+			log.Println("Received error: ", err)
+		}
+
+		if err := handleRFR(rfr, message, conn); err != nil {
 			log.Println("Received error: ", err)
 		}
 
 	case "goItAlone":
 
-		rfr := api.HandleRequestForResponse(message.Data)
-		err := handleRFR(rfr, message, conn)
+		rfr, err := api.HandleRequestForResponse(message.Data)
 		if err != nil {
+			log.Println("Received error: ", err)
+		}
+
+		if err := handleRFR(rfr, message, conn); err != nil {
 			log.Println("Received error: ", err)
 		}
 
 	case "playerID":
 
-		myID := api.HandlePlayerID(message.Data)
+		myID, err := api.HandlePlayerID(message.Data)
+		if err != nil {
+			log.Println("Received error: ", err)
+		}
 		fmt.Printf("You are Player %d\n\n", myID)
 
 	case "dealerUpdate":
 
-		du := api.HandleDealerUpdate(message.Data)
+		du, err := api.HandleDealerUpdate(message.Data)
+		if err != nil {
+			log.Println("Received error: ", err)
+		}
 		fmt.Printf("Player %d is dealing.\n\n", du.Dealer)
 
 	case "suitOrdered":
 
-		so := api.HandleSuitOrdered(message.Data)
+		so, err := api.HandleSuitOrdered(message.Data)
+		if err != nil {
+			log.Println("Received error: ", err)
+		}
 		aloneStr := "is not"
 		if so.GoingAlone {
 			aloneStr = "is"
@@ -176,7 +200,10 @@ func processMessage(buf []byte, conn net.Conn) {
 
 	case "plays":
 
-		plays := api.HandlePlays(message.Data)
+		plays, err := api.HandlePlays(message.Data)
+		if err != nil {
+			log.Println("Received error: ", err)
+		}
 		lastPlay := plays[len(plays)-1]
 		fmt.Printf("Player %d played the %s.\n", lastPlay.PlayerID, lastPlay.CardPlayed)
 
@@ -186,26 +213,39 @@ func processMessage(buf []byte, conn net.Conn) {
 
 	case "trickScore":
 
-		tscore := api.HandleTrickScore(message.Data)
+		tscore, err := api.HandleTrickScore(message.Data)
+		if err != nil {
+			log.Println("Received error: ", err)
+		}
 		fmt.Printf("\n################################################################\n")
 		fmt.Printf("\nEven trick score: %d  |  Odd trick score: %d\n", tscore["evenTrickScore"], tscore["oddTrickScore"])
 		fmt.Printf("\n################################################################\n\n")
 
 	case "updateScore":
 
-		score := api.HandleUpdateScore(message.Data)
+		score, err := api.HandleUpdateScore(message.Data)
+		if err != nil {
+			log.Println("Received error: ", err)
+		}
 		fmt.Printf("\n################################################################\n")
 		fmt.Printf("\nEven score: %d  |  Odd score: %d\n", score["evenScore"], score["oddScore"])
 		fmt.Printf("\n################################################################\n\n")
 
 	case "error":
 
-		errMessage := api.HandleError(message.Data)
+		errMessage, err := api.HandleError(message.Data)
+		if err != nil {
+			log.Println("Received error: ", err)
+		}
 		fmt.Println(errMessage)
 
 	case "gameOver":
 
-		winner := api.HandleGameOver(message.Data)
+		winner, err := api.HandleGameOver(message.Data)
+		if err != nil {
+			log.Println(err)
+			return
+		}
 		if winner%2 == 0 {
 			fmt.Printf("Even team won!\n\n")
 			return
@@ -226,10 +266,12 @@ func drainChannel(updateChan chan []byte, conn net.Conn) {
 		select {
 		case buf, ok := <-updateChan:
 			if !ok {
+				log.Println("Channel closed. Exiting")
 				return
 			}
 			processMessage(buf, conn)
 		default:
+			log.Println("Default short circuit during drainChannel")
 			return
 		}
 	}
@@ -259,14 +301,14 @@ func handleMyConnection(ctx context.Context, done chan struct{}) {
 	go func() {
 		defer close(updateChan)
 		for {
-			fmt.Println("WAITING FOR INPUT")
+			log.Println("WAITING FOR INPUT FROM CONN...")
 			select {
 			case <-ctx.Done():
+				log.Println("CONTEXT CANCELLED, QUITTING!")
 				return
 			default:
 				buf, err := reader.ReadBytes('\n')
 				if err != nil {
-					fmt.Println(err)
 					log.Println(err)
 					return
 				}
@@ -277,11 +319,14 @@ func handleMyConnection(ctx context.Context, done chan struct{}) {
 
 	// Process messages until the context is cancelled or the channel is closed
 	for {
+		log.Println("Waiting for messages to come down the updateChan")
 		select {
 		case <-ctx.Done():
+			log.Println("Context cancelled, exiting.")
 			return
 		case buf, ok := <-updateChan:
 			if !ok {
+				log.Println("updateChan closed, exiting.")
 				return
 			}
 			processMessage(buf, conn)

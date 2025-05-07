@@ -10,7 +10,7 @@ import (
 	"net"
 )
 
-func LazyBot(doneChan chan int, ctx context.Context, cancel context.CancelFunc) {
+func LazyBot(doneChan chan int, ctx context.Context) {
 
 	defer close(doneChan)
 
@@ -98,6 +98,8 @@ func LazyBot(doneChan chan int, ctx context.Context, cancel context.CancelFunc) 
 				api.HandleSuitOrdered(message.Data)
 			case "plays":
 				api.HandlePlays(message.Data)
+			case "trickWinner":
+				log.Println(message.Message)
 			case "trickScore":
 				api.HandleTrickScore(message.Data)
 			case "updateScore":
@@ -105,7 +107,11 @@ func LazyBot(doneChan chan int, ctx context.Context, cancel context.CancelFunc) 
 			case "error":
 				api.HandleError(message.Data)
 			case "gameOver":
-				res := api.HandleGameOver(message.Data)
+				res, err := api.HandleGameOver(message.Data)
+				if err != nil {
+					log.Println(err)
+					continue
+				}
 				doneChan <- res
 				return
 			default:
