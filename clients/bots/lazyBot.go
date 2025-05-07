@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"euchre/api"
+	"euchre/clients"
 	"log"
 	"net"
 )
@@ -21,7 +22,7 @@ func LazyBot(doneChan chan int, ctx context.Context, cancel context.CancelFunc) 
 	}
 	defer conn.Close()
 
-	api.SayHello(conn)
+	clients.SayHello(conn)
 
 	reader := bufio.NewReader(conn)
 
@@ -37,7 +38,7 @@ func LazyBot(doneChan chan int, ctx context.Context, cancel context.CancelFunc) 
 				return
 			}
 
-			var message api.Envelope
+			var message api.ClientEnvelope
 			err = json.Unmarshal(buf, &message)
 			if err != nil {
 				log.Println("Original Unmarshal Failure: ", string(buf))
@@ -49,9 +50,9 @@ func LazyBot(doneChan chan int, ctx context.Context, cancel context.CancelFunc) 
 
 			switch message.Type {
 			case "connectionCheck":
-				api.HandleConnectionCheck(conn)
+				clients.HandleConnectionCheck(conn)
 			case "pickUpOrPass":
-				api.HandlePickUpOrPass(message.Data)
+				api.HandleRequestForResponse(message.Data)
 				_, err = conn.Write(api.EncodeResponse(message.Type, 1))
 				if err != nil {
 					log.Println(err)

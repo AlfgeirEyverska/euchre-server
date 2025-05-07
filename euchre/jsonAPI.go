@@ -33,7 +33,7 @@ func (jsonApi JsonAPIMessager) GameOver(winner string) string {
 
 	data := api.WinnerUpdate{Winner: winner}
 
-	message := api.Envelope{Type: "gameOver", Data: data, Message: msg}
+	message := api.ServerEnvelope{Type: "gameOver", Data: data, Message: msg}
 
 	return marshalOrPanic(message)
 }
@@ -52,7 +52,7 @@ func (jsonApi JsonAPIMessager) PlayedSoFar(plays []play) string {
 		msg += fmt.Sprintf("Player %d played the %s. ", v.cardPlayer.ID, v.cardPlayed.String())
 	}
 
-	message := api.Envelope{Type: "plays", Data: jsonPlays, Message: msg}
+	message := api.ServerEnvelope{Type: "plays", Data: jsonPlays, Message: msg}
 
 	return marshalOrPanic(message)
 }
@@ -63,7 +63,7 @@ func (jsonApi JsonAPIMessager) TrickWinner(playerID int) string {
 
 	data := api.TrickWinnerUpdate{PlayerID: playerID, Action: "won trick"}
 
-	message := api.Envelope{Type: "trickWinner", Data: data, Message: msg}
+	message := api.ServerEnvelope{Type: "trickWinner", Data: data, Message: msg}
 
 	return marshalOrPanic(message)
 }
@@ -78,7 +78,7 @@ func (jsonApi JsonAPIMessager) TricksSoFar(evenScore int, oddScore int) string {
 		OddTrickScore  int `json:"oddTrickScore"`
 	}{evenScore, oddScore}
 
-	message := api.Envelope{Type: "trickScore", Data: data, Message: msg}
+	message := api.ServerEnvelope{Type: "trickScore", Data: data, Message: msg}
 
 	return marshalOrPanic(message)
 }
@@ -93,7 +93,7 @@ func (jsonApi JsonAPIMessager) UpdateScore(evenScore int, oddScore int) string {
 		OddScore  int `json:"oddScore"`
 	}{evenScore, oddScore}
 
-	message := api.Envelope{Type: "updateScore", Data: data, Message: msg}
+	message := api.ServerEnvelope{Type: "updateScore", Data: data, Message: msg}
 	return marshalOrPanic(message)
 }
 
@@ -102,7 +102,7 @@ func (jsonApi JsonAPIMessager) DealerUpdate(playerID int) string {
 	msg := fmt.Sprint("Player ", playerID, " is dealing.")
 	data := api.DealerUpdate{Dealer: playerID}
 
-	message := api.Envelope{Type: "dealerUpdate", Data: data, Message: msg}
+	message := api.ServerEnvelope{Type: "dealerUpdate", Data: data, Message: msg}
 	return marshalOrPanic(message)
 }
 
@@ -115,7 +115,7 @@ func (jsonApi JsonAPIMessager) PlayerPassed(playerID int) string {
 		Action   string `json:"action"`
 	}{playerID, "passed"}
 
-	message := api.Envelope{Type: "playerPassed", Data: data, Message: msg}
+	message := api.ServerEnvelope{Type: "playerPassed", Data: data, Message: msg}
 
 	return marshalOrPanic(message)
 }
@@ -130,7 +130,7 @@ func (jsonApi JsonAPIMessager) PlayerOrderedSuit(playerID int, trump suit) strin
 		Trump:      trump.String(),
 		GoingAlone: false}
 
-	message := api.Envelope{Type: "suitOrdered", Data: data, Message: msg}
+	message := api.ServerEnvelope{Type: "suitOrdered", Data: data, Message: msg}
 	return marshalOrPanic(message)
 }
 
@@ -144,7 +144,7 @@ func (jsonApi JsonAPIMessager) PlayerOrderedSuitAndGoingAlone(playerID int, trum
 		Trump:      trump.String(),
 		GoingAlone: true}
 
-	message := api.Envelope{Type: "suitOrdered", Data: data, Message: msg}
+	message := api.ServerEnvelope{Type: "suitOrdered", Data: data, Message: msg}
 	return marshalOrPanic(message)
 }
 
@@ -157,7 +157,7 @@ func (jsonApi JsonAPIMessager) PlayCard(playerID int, trump suit, flip card, han
 
 	data := api.RequestForResponse{Info: pi, ValidRes: validResponses}
 
-	message := api.Envelope{Type: "playCard", Data: data, Message: msg}
+	message := api.ServerEnvelope{Type: "playCard", Data: data, Message: msg}
 
 	return marshalOrPanic(message)
 }
@@ -170,7 +170,7 @@ func (jsonApi JsonAPIMessager) DealerDiscard(playerID int, trump suit, flip card
 
 	data := api.RequestForResponse{Info: pi, ValidRes: validResponses}
 
-	message := api.Envelope{Type: "dealerDiscard", Data: data, Message: msg}
+	message := api.ServerEnvelope{Type: "dealerDiscard", Data: data, Message: msg}
 
 	return marshalOrPanic(message)
 }
@@ -188,7 +188,7 @@ func (jsonApi JsonAPIMessager) PickUpOrPass(playerID int, trump suit, flip card,
 
 	data := api.RequestForResponse{Info: pi, ValidRes: validResponses}
 
-	message := api.Envelope{Type: "pickUpOrPass", Data: data, Message: msg}
+	message := api.ServerEnvelope{Type: "pickUpOrPass", Data: data, Message: msg}
 
 	return marshalOrPanic(message)
 }
@@ -206,7 +206,7 @@ func (jsonApi JsonAPIMessager) OrderOrPass(playerID int, trump suit, flip card, 
 
 	data := api.RequestForResponse{Info: pi, ValidRes: validResponses}
 
-	message := api.Envelope{Type: "orderOrPass", Data: data, Message: msg}
+	message := api.ServerEnvelope{Type: "orderOrPass", Data: data, Message: msg}
 	return marshalOrPanic(message)
 }
 
@@ -223,7 +223,7 @@ func (jsonApi JsonAPIMessager) GoItAlone(playerID int, trump suit, flip card, ha
 
 	data := api.RequestForResponse{Info: pi, ValidRes: validResponses}
 
-	message := api.Envelope{Type: "goItAlone", Data: data, Message: msg}
+	message := api.ServerEnvelope{Type: "goItAlone", Data: data, Message: msg}
 
 	return marshalOrPanic(message)
 }

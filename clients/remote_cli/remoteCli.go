@@ -2,10 +2,11 @@ package remotecli
 
 import (
 	"bufio"
-	"clients/bots"
 	"context"
 	"encoding/json"
 	"euchre/api"
+	"euchre/clients"
+	"euchre/clients/bots"
 	"fmt"
 	"log"
 	"net"
@@ -25,7 +26,6 @@ func Play(ctx context.Context) {
 		doneChan := make(chan int)
 
 		go bots.RandomBot(doneChan, ctx)
-		// go bots.LazyBot(doneChan, ctx, cancel)
 
 		doneChans = append(doneChans, doneChan)
 	}
@@ -79,7 +79,7 @@ func getIntInput() int {
 	}
 }
 
-func handleRFR(rfr api.RequestForResponse, message api.Envelope, conn net.Conn) error {
+func handleRFR(rfr api.RequestForResponse, message api.ClientEnvelope, conn net.Conn) error {
 	fmt.Printf("\n%s\n\n", rfr.Info)
 	fmt.Printf("%s\n\n", message.Message)
 	fmt.Printf("%s\n\n", validResponsesString(rfr.ValidRes))
@@ -94,7 +94,7 @@ func handleRFR(rfr api.RequestForResponse, message api.Envelope, conn net.Conn) 
 
 func processMessage(buf []byte, conn net.Conn) {
 
-	var message api.Envelope
+	var message api.ClientEnvelope
 	if err := json.Unmarshal(buf, &message); err != nil {
 		log.Println("Original Unmarshal Failure: ", string(buf))
 		log.Println(err)
@@ -107,7 +107,7 @@ func processMessage(buf []byte, conn net.Conn) {
 
 	case "connectionCheck":
 
-		api.HandleConnectionCheck(conn)
+		clients.HandleConnectionCheck(conn)
 
 	case "pickUpOrPass":
 
@@ -242,7 +242,7 @@ func handleMyConnection(ctx context.Context, done chan struct{}) {
 		return
 	}
 
-	api.SayHello(conn)
+	clients.SayHello(conn)
 
 	reader := bufio.NewReader(conn)
 	updateChan := make(chan []byte, 10)

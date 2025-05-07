@@ -62,7 +62,7 @@ func (pcm *PlayerConnectionManager) GreetPlayers() {
 // greetPlayer messages the player its player id
 func (pcm *PlayerConnectionManager) greetPlayer(playerID int) {
 
-	playerIDMsg := api.Envelope{
+	playerIDMsg := api.ServerEnvelope{
 		Type:    "playerID",
 		Data:    playerID,
 		Message: fmt.Sprintf("You are player %d\n", playerID),

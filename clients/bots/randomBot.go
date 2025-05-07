@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"euchre/api"
+	"euchre/clients"
 	"log"
 	"math/rand"
 	"net"
@@ -47,7 +48,7 @@ func RandomBot(doneChan chan int, ctx context.Context) {
 		// cancel()
 	}()
 
-	api.SayHello(conn)
+	clients.SayHello(conn)
 
 	reader := bufio.NewReader(conn)
 
@@ -63,7 +64,7 @@ func RandomBot(doneChan chan int, ctx context.Context) {
 				return
 			}
 
-			var message api.Envelope
+			var message api.ClientEnvelope
 			err = json.Unmarshal(buf, &message)
 			if err != nil {
 				log.Println("Original Unmarshal Failure: ", string(buf))
@@ -77,9 +78,9 @@ func RandomBot(doneChan chan int, ctx context.Context) {
 
 			switch message.Type {
 			case "connectionCheck":
-				api.HandleConnectionCheck(conn)
+				clients.HandleConnectionCheck(conn)
 			case "pickUpOrPass":
-				res := api.HandlePickUpOrPass(message.Data)
+				res := api.HandleRequestForResponse(message.Data)
 				sendRandomResponse(message.Type, res.ValidRes, conn)
 			case "orderOrPass":
 				res := api.HandleRequestForResponse(message.Data)

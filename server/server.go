@@ -176,7 +176,7 @@ func waitForHello(conn net.Conn) bool {
 // it times out or otherwise fails to read from the connection and returns false
 // or it gets a response and returns true
 func isAlive(conn net.Conn) bool {
-	message := api.Envelope{Type: "connectionCheck", Data: "Ping"}
+	message := api.ServerEnvelope{Type: "connectionCheck", Data: "Ping"}
 	res, _ := json.Marshal(message)
 	messageStr := fmt.Sprint(string(res), "\n")
 

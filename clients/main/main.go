@@ -1,8 +1,8 @@
 package main
 
 import (
-	remotecli "clients/remote_cli"
 	"context"
+	remotecli "euchre/clients/remote_cli"
 	"log"
 	"os"
 	"os/signal"

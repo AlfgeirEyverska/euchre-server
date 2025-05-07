@@ -4,15 +4,20 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
-	"net"
 )
 
 // TODO: Finish refactor of the json api into this. Probably create constructors for everything to replace jsonAPI.go
 
-type Envelope struct {
+type ServerEnvelope struct {
 	Type    string `json:"type"`
 	Data    any    `json:"data"`
 	Message string `json:"message"`
+}
+
+type ClientEnvelope struct {
+	Type    string          `json:"type"`
+	Data    json.RawMessage `json:"data"`
+	Message string          `json:"message"`
 }
 
 type SuitOrdered struct {
@@ -52,6 +57,11 @@ type TrickWinnerUpdate struct {
 	Action   string `json:"action"`
 }
 
+type responseEnvelope struct {
+	Type string `json:"type"`
+	Data any    `json:"data"`
+}
+
 func (pInfo PlayerInfo) String() string {
 	message := fmt.Sprintln("Player ", pInfo.PlayerID)
 	message += fmt.Sprintf("Dealer flipped the %s\n", pInfo.Flip)
@@ -61,11 +71,6 @@ func (pInfo PlayerInfo) String() string {
 		message += fmt.Sprint(v, " | ")
 	}
 	return message
-}
-
-type responseEnvelope struct {
-	Type string `json:"type"`
-	Data any    `json:"data"`
 }
 
 func HandleDealerUpdate(buf json.RawMessage) DealerUpdate {
@@ -78,23 +83,13 @@ func HandleDealerUpdate(buf json.RawMessage) DealerUpdate {
 	return message
 }
 
-func HandlePickUpOrPass(buf json.RawMessage) RequestForResponse {
-	var message RequestForResponse
-	err := json.Unmarshal(buf, &message)
-	if err != nil {
-		log.Fatalln(err)
-	}
-	log.Println(message.Info)
-	return message
-}
-
 func HandleRequestForResponse(buf json.RawMessage) RequestForResponse {
 	message := RequestForResponse{}
 	err := json.Unmarshal(buf, &message)
 	if err != nil {
 		log.Fatalln(err)
 	}
-	log.Println(message)
+	log.Println(message.Info)
 	return message
 }
 
@@ -106,18 +101,6 @@ func HandleError(buf json.RawMessage) string {
 	}
 	log.Println(message)
 	return message
-}
-
-func HandleConnectionCheck(writer net.Conn) {
-	message := "Pong"
-
-	msgBytes := EncodeResponse("connectionCheck", message)
-
-	log.Println("Connection Check Message: ", msgBytes)
-	_, err := writer.Write(msgBytes)
-	if err != nil {
-		log.Fatalln(err)
-	}
 }
 
 func HandleSuitOrdered(buf json.RawMessage) SuitOrdered {
@@ -187,28 +170,6 @@ func HandleGameOver(buf json.RawMessage) int {
 		return 0
 	}
 	return 1
-}
-
-func giveName(conn net.Conn, name string) {
-	playerIDMsg := map[string]string{"Name": name}
-	message, _ := json.Marshal(playerIDMsg)
-	_, err := conn.Write([]byte(message))
-	if err != nil {
-		log.Fatalln(err)
-	}
-}
-
-func SayHello(conn net.Conn) {
-	msg := "hello"
-
-	msgBytes := EncodeResponse("hello", msg)
-
-	_, err := conn.Write(msgBytes)
-	log.Println("LENGTH OF HELLO MESSAGE: ", len(msgBytes))
-	if err != nil {
-		log.Println(err)
-		return
-	}
 }
 
 func EncodeResponse(messageType string, data any) []byte {
