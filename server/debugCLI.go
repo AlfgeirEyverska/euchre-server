@@ -1,4 +1,4 @@
-package euchre
+package server
 
 import "fmt"
 

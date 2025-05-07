@@ -38,13 +38,13 @@ func RandomBot(doneChan chan int, ctx context.Context) {
 
 	conn, err := net.Dial("tcp", "localhost:8080")
 	if err != nil {
+		log.Println(err)
 		return
 	}
 
 	defer func() {
 		conn.Close()
 		close(doneChan)
-		log.Println(err)
 		// cancel()
 	}()
 

@@ -1,4 +1,4 @@
-package remotecli
+package main
 
 import (
 	"bufio"
@@ -10,10 +10,42 @@ import (
 	"fmt"
 	"log"
 	"net"
+	"os"
+	"os/signal"
+	"syscall"
 	"time"
 )
 
-func Play(ctx context.Context) {
+func main() {
+	logFile, err := os.OpenFile("euchreBot.log", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
+	if err != nil {
+		log.Println(err)
+		log.SetOutput(os.Stdout)
+	} else {
+		defer logFile.Close()
+		log.SetOutput(logFile)
+	}
+	log.SetFlags(log.LstdFlags | log.Lshortfile)
+
+	// Set up context
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	signalChan := make(chan os.Signal, 1)
+	signal.Notify(signalChan, os.Interrupt, syscall.SIGTERM)
+	go func() {
+		<-signalChan
+		log.Println("Shutdown signal received...")
+		cancel()
+	}()
+
+	play(ctx)
+
+	log.Println("Done cleaning up.")
+
+}
+
+func play(ctx context.Context) {
 	fmt.Printf("################################################################\n")
 	fmt.Println("                 Let's Play Some Euchre!")
 	fmt.Printf("################################################################\n\n")
