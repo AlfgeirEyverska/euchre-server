@@ -2,6 +2,7 @@ package euchre
 
 import (
 	"context"
+	"euchre/api"
 	"log"
 )
 
@@ -23,7 +24,7 @@ func PlayEuchre(ctx context.Context, gameState euchreGameState) {
 				return
 			}
 
-			message := gameState.Messages.DealerUpdate(gameState.CurrentDealer.ID)
+			message := api.UpdateDealer(gameState.CurrentDealer.ID)
 			gameState.API.Broadcast(message)
 
 			gameState.Deal()

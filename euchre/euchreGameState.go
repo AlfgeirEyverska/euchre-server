@@ -3,6 +3,7 @@ package euchre
 import (
 	"encoding/json"
 	"errors"
+	"euchre/api"
 	"fmt"
 	"log"
 )
@@ -28,12 +29,12 @@ type euchreGameState struct {
 	oddTeamScore  int
 	trump         suit
 	API           euchreAPI
-	Messages      JsonAPIMessager
-	whoOrdered    int
-	discard       deck
-	flip          card
-	leftBower     card
-	goingItAlone  bool
+	// Messages      JsonAPIMessager
+	whoOrdered   int
+	discard      deck
+	flip         card
+	leftBower    card
+	goingItAlone bool
 }
 
 // func NewEuchreGameState(myAPI api, myMG JsonAPI) euchreGameState {
@@ -55,7 +56,7 @@ func NewEuchreGameState(myAPI euchreAPI) euchreGameState {
 		oddTeamScore:  0,
 		trump:         undefined,
 		API:           myAPI,
-		Messages:      JsonAPIMessager{},
+		// Messages:      JsonAPIMessager{},
 	}
 
 	return myGameState
@@ -124,7 +125,7 @@ func (gs *euchreGameState) OfferTheFlippedCard() (pickedUp bool) {
 
 	for i := 0; i < NumPlayers; i++ {
 
-		message := gs.Messages.PickUpOrPass(gs.CurrentPlayer.ID, gs.trump, gs.flip, gs.CurrentPlayer.hand, validResponses)
+		message := api.PickUpOrPass(gs.CurrentPlayer.ID, gs.trump.String(), gs.flip.String(), gs.CurrentPlayer.hand.toStrings(), validResponses)
 		response := gs.getValidResponse(gs.CurrentPlayer.ID, message, validResponses)
 		log.Printf("Player %d FlippedCardResponse: %s\n", gs.CurrentPlayer.ID, validResponses[response])
 
@@ -136,7 +137,7 @@ func (gs *euchreGameState) OfferTheFlippedCard() (pickedUp bool) {
 		}
 
 		// getValidResponse ensures that if it wasn't "2" it is "1"
-		message = gs.Messages.PlayerPassed(gs.CurrentPlayer.ID)
+		message = api.PlayerPassed(gs.CurrentPlayer.ID)
 		gs.API.Broadcast(message)
 		gs.nextPlayer()
 		continue
@@ -155,7 +156,7 @@ func (gs *euchreGameState) DealerDiscard() {
 		responseCards[i+1] = gs.CurrentDealer.hand[i]
 	}
 
-	message := gs.Messages.DealerDiscard(gs.CurrentDealer.ID, gs.trump, gs.flip, gs.CurrentDealer.hand, validResponses)
+	message := api.DealerDiscard(gs.CurrentDealer.ID, gs.trump.String(), gs.flip.String(), gs.CurrentDealer.hand.toStrings(), validResponses)
 
 	response := gs.getValidResponse(gs.CurrentDealer.ID, message, validResponses)
 
@@ -177,7 +178,7 @@ func (gs *euchreGameState) EstablishTrump() {
 			return
 		}
 		if gs.CurrentPlayer.ID == gs.CurrentDealer.ID {
-			gs.API.MessagePlayer(gs.CurrentDealer.ID, gs.Messages.DealerMustOrder())
+			gs.API.MessagePlayer(gs.CurrentDealer.ID, api.DealerMustOrder())
 		} else {
 			gs.nextPlayer()
 		}
@@ -198,7 +199,7 @@ func (gs *euchreGameState) askPlayerToOrderOrPass() (pass bool) {
 		responseSuits[j] = rs[i]
 	}
 
-	message := gs.Messages.OrderOrPass(gs.CurrentPlayer.ID, gs.trump, gs.flip, gs.CurrentPlayer.hand, validResponses)
+	message := api.OrderOrPass(gs.CurrentPlayer.ID, gs.trump.String(), gs.flip.String(), gs.CurrentPlayer.hand.toStrings(), validResponses)
 
 	response := gs.getValidResponse(gs.CurrentPlayer.ID, message, validResponses)
 	log.Println("OrderOrPassResponse ", response)
@@ -219,7 +220,7 @@ func (gs *euchreGameState) askPlayerIfGoingAlone() {
 
 	validResponses := map[int]string{1: "Yes", 2: "No"}
 
-	message := gs.Messages.GoItAlone(gs.CurrentPlayer.ID, gs.trump, gs.flip, gs.CurrentPlayer.hand, validResponses)
+	message := api.GoItAlone(gs.CurrentPlayer.ID, gs.trump.String(), gs.flip.String(), gs.CurrentPlayer.hand.toStrings(), validResponses)
 
 	response := gs.getValidResponse(gs.CurrentPlayer.ID, message, validResponses)
 	log.Printf("Player %d going alone? %s", gs.CurrentPlayer.ID, validResponses[response])
@@ -227,9 +228,9 @@ func (gs *euchreGameState) askPlayerIfGoingAlone() {
 	gs.goingItAlone = response == 1
 
 	if gs.goingItAlone {
-		message = gs.Messages.PlayerOrderedSuitAndGoingAlone(gs.CurrentPlayer.ID, gs.trump)
+		message = api.PlayerOrderedSuitAndGoingAlone(gs.CurrentPlayer.ID, gs.trump.String())
 	} else {
-		message = gs.Messages.PlayerOrderedSuit(gs.CurrentPlayer.ID, gs.trump)
+		message = api.PlayerOrderedSuit(gs.CurrentPlayer.ID, gs.trump.String())
 	}
 	gs.API.Broadcast(message)
 }
@@ -247,7 +248,7 @@ func (gs *euchreGameState) askPlayerToPlayCard(firstPlayer bool, cardLead card) 
 		responseCards[prettyIdx] = v
 	}
 
-	message := gs.Messages.PlayCard(gs.CurrentPlayer.ID, gs.trump, gs.flip, gs.CurrentPlayer.hand, playableCards, validResponses)
+	message := api.PlayCard(gs.CurrentPlayer.ID, gs.trump.String(), gs.flip.String(), gs.CurrentPlayer.hand.toStrings(), validResponses)
 	response := gs.getValidResponse(gs.CurrentPlayer.ID, message, validResponses)
 
 	valueCard, ok := responseCards[response]
@@ -277,10 +278,10 @@ func (gs *euchreGameState) Play5Tricks() {
 			oddScore++
 		}
 
-		message := gs.Messages.TrickWinner(winningPlay.cardPlayer.ID)
+		message := api.TrickWinner(winningPlay.cardPlayer.ID)
 		gs.API.Broadcast(message)
 
-		message = gs.Messages.TricksSoFar(evenScore, oddScore)
+		message = api.TricksSoFar(evenScore, oddScore)
 		gs.API.Broadcast(message)
 		log.Println("Even Trick Score ", evenScore, " | Odd Trick Score", oddScore)
 
@@ -291,7 +292,7 @@ func (gs *euchreGameState) Play5Tricks() {
 	gs.awardPoints(evenScore, oddScore)
 	gs.goingItAlone = false
 
-	message := gs.Messages.UpdateScore(gs.evenTeamScore, gs.oddTeamScore)
+	message := api.UpdateScore(gs.evenTeamScore, gs.oddTeamScore)
 	gs.API.Broadcast(message)
 
 	log.Printf("Even Score: %d  Odd Score %d \n", gs.evenTeamScore, gs.oddTeamScore)
@@ -302,7 +303,7 @@ func (gs *euchreGameState) Play5Tricks() {
 		} else {
 			winner = "Odd"
 		}
-		message = gs.Messages.GameOver(winner)
+		message = api.GameOver(winner)
 		gs.API.Broadcast(message)
 	}
 }
@@ -327,7 +328,7 @@ func (gs *euchreGameState) playTrick() play {
 	for playerN := 1; playerN < currentNumPlayers; playerN++ {
 		// Get valid card from player
 		for {
-			message := gs.Messages.PlayedSoFar(plays)
+			message := api.PlayedSoFar(playsToPlayJSON(plays))
 			gs.API.Broadcast(message)
 
 			currentPlay := gs.askPlayerToPlayCard(false, cardLead)
@@ -340,10 +341,10 @@ func (gs *euchreGameState) playTrick() play {
 				break
 			}
 			log.Println("Player ", gs.CurrentPlayer.ID, " played invalid card.")
-			gs.API.MessagePlayer(gs.CurrentPlayer.ID, gs.Messages.InvalidCard())
+			gs.API.MessagePlayer(gs.CurrentPlayer.ID, api.InvalidCard())
 		}
 	}
-	message := gs.Messages.PlayedSoFar(plays)
+	message := api.PlayedSoFar(playsToPlayJSON(plays))
 	gs.API.Broadcast(message)
 	// check winning card
 	winningPlay := plays[0]
@@ -600,13 +601,13 @@ func (gs euchreGameState) getValidResponse(playerID int, message string, validRe
 
 		res, err := unpackJson(response)
 		if err != nil {
-			gs.API.MessagePlayer(playerID, gs.Messages.InvalidInput())
+			gs.API.MessagePlayer(playerID, api.InvalidInput())
 			continue
 		}
 
 		_, ok := validResponses[res]
 		if !ok {
-			gs.API.MessagePlayer(playerID, gs.Messages.InvalidInput())
+			gs.API.MessagePlayer(playerID, api.InvalidInput())
 			continue
 		}
 		return res

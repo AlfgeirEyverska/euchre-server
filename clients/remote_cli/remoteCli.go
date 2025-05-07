@@ -218,7 +218,7 @@ func processMessage(buf []byte, conn net.Conn) {
 			log.Println("Received error: ", err)
 		}
 		fmt.Printf("\n################################################################\n")
-		fmt.Printf("\nEven trick score: %d  |  Odd trick score: %d\n", tscore["evenTrickScore"], tscore["oddTrickScore"])
+		fmt.Printf("\nEven trick score: %d  |  Odd trick score: %d\n", tscore.EvenTrickScore, tscore.OddTrickScore)
 		fmt.Printf("\n################################################################\n\n")
 
 	case "updateScore":
@@ -228,7 +228,7 @@ func processMessage(buf []byte, conn net.Conn) {
 			log.Println("Received error: ", err)
 		}
 		fmt.Printf("\n################################################################\n")
-		fmt.Printf("\nEven score: %d  |  Odd score: %d\n", score["evenScore"], score["oddScore"])
+		fmt.Printf("\nEven score: %d  |  Odd score: %d\n", score.EvenScore, score.OddScore)
 		fmt.Printf("\n################################################################\n\n")
 
 	case "error":

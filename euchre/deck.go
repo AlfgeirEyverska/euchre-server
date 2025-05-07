@@ -63,3 +63,11 @@ func (d deck) hasA(s suit, trump suit, leftBower card) bool {
 	}
 	return false
 }
+
+func (d deck) toStrings() []string {
+	strs := make([]string, len(d))
+	for i, c := range d {
+		strs[i] = c.String()
+	}
+	return strs
+}

@@ -62,6 +62,16 @@ type responseEnvelope struct {
 	Data any    `json:"data"`
 }
 
+type TrickScoreUptade struct {
+	EvenTrickScore int `json:"evenTrickScore"`
+	OddTrickScore  int `json:"oddTrickScore"`
+}
+
+type ScoreUpdate struct {
+	EvenScore int `json:"evenScore"`
+	OddScore  int `json:"oddScore"`
+}
+
 func (pInfo PlayerInfo) String() string {
 	message := fmt.Sprintln("Player ", pInfo.PlayerID)
 	message += fmt.Sprintf("Dealer flipped the %s\n", pInfo.Flip)
@@ -122,8 +132,8 @@ func HandlePlays(buf json.RawMessage) ([]PlayJSON, error) {
 	return message, nil
 }
 
-func HandleTrickScore(buf json.RawMessage) (map[string]int, error) {
-	var message map[string]int
+func HandleTrickScore(buf json.RawMessage) (TrickScoreUptade, error) {
+	var message TrickScoreUptade
 	err := json.Unmarshal(buf, &message)
 	if err != nil {
 		return message, err
@@ -132,8 +142,8 @@ func HandleTrickScore(buf json.RawMessage) (map[string]int, error) {
 	return message, nil
 }
 
-func HandleUpdateScore(buf json.RawMessage) (map[string]int, error) {
-	var message map[string]int
+func HandleUpdateScore(buf json.RawMessage) (ScoreUpdate, error) {
+	var message ScoreUpdate
 	err := json.Unmarshal(buf, &message)
 	if err != nil {
 		return message, err
