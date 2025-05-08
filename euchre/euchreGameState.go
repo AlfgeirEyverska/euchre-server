@@ -8,7 +8,7 @@ import (
 	"log"
 )
 
-const targetScore = 1
+const targetScore = 10
 
 // TODO: Fix bug where trump is not reset after a trick
 
@@ -160,10 +160,8 @@ func (gs *euchreGameState) DealerDiscard() {
 
 	response := gs.getValidResponse(gs.CurrentDealer.ID, message, validResponses)
 
-	discarded, ok := responseCards[response]
-	if !ok {
-		log.Fatalln("Unable to get valid card out of responseCards map")
-	}
+	// getValidResponse ensures this should be ok
+	discarded := responseCards[response]
 
 	log.Println("Dealer discarded the ", discarded)
 	gs.CurrentDealer.hand.replace(discarded, gs.flip)
@@ -251,10 +249,9 @@ func (gs *euchreGameState) askPlayerToPlayCard(firstPlayer bool, cardLead card) 
 	message := api.PlayCard(gs.CurrentPlayer.ID, gs.trump.String(), gs.flip.String(), gs.CurrentPlayer.hand.toStrings(), validResponses)
 	response := gs.getValidResponse(gs.CurrentPlayer.ID, message, validResponses)
 
-	valueCard, ok := responseCards[response]
-	if !ok {
-		log.Fatalln("Unable to get valid card out of responseCards map")
-	}
+	// getValidResponse ensures this should be ok
+	valueCard := responseCards[response]
+
 	// REMOVE
 	// time.Sleep(500 * time.Millisecond)
 	return play{gs.CurrentPlayer, valueCard}

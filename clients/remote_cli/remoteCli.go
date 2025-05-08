@@ -278,7 +278,7 @@ func processMessage(buf []byte, conn net.Conn) {
 			log.Println(err)
 			return
 		}
-		if winner%2 == 0 {
+		if winner.Winner == "Even" {
 			fmt.Printf("Even team won!\n\n")
 			return
 		}

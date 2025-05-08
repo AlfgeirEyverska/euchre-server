@@ -163,18 +163,13 @@ func HandlePlayerID(buf json.RawMessage) (int, error) {
 	return pid, nil
 }
 
-func HandleGameOver(buf json.RawMessage) (int, error) {
+func HandleGameOver(buf json.RawMessage) (WinnerUpdate, error) {
 	var message WinnerUpdate
 	err := json.Unmarshal(buf, &message)
-
 	if err != nil {
-		return 0, err
+		return message, err
 	}
-
-	if message.Winner == "Even" {
-		return 0, nil
-	}
-	return 1, nil
+	return message, nil
 }
 
 func EncodeResponse(messageType string, data any) []byte {

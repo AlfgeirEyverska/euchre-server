@@ -38,8 +38,8 @@ func GameOver(winner string) string {
 }
 
 func PlayedSoFar(plays []PlayJSON) string {
-	var msg string
 
+	var msg string
 	for _, v := range plays {
 		msg += fmt.Sprintf("Player %d played the %s. ", v.PlayerID, v.CardPlayed)
 	}
@@ -141,7 +141,7 @@ func PlayerOrderedSuitAndGoingAlone(playerID int, trump string) string {
 // Requests for Response
 
 func PlayCard(playerID int, trump string, flip string, hand []string, validResponses map[int]string) string {
-	// func  PlayCard(playerID int, trump string, flip string, hand []string, validCards deck, validResponses map[int]string) string {
+
 	msg := "It is your turn. What would you like to play?"
 
 	pi := PlayerInfo{PlayerID: playerID, Trump: trump, Flip: flip, Hand: hand}
@@ -221,6 +221,8 @@ func GoItAlone(playerID int, trump string, flip string, hand []string, validResp
 
 // Helper functions
 
+// marshalOrPanic wraps the json marshal step in this helper function that panics if the marshalling fails
+// this has been tested with all of the structs and should never actually fail to marshal
 func marshalOrPanic(v any) string {
 	b, err := json.Marshal(v)
 	if err != nil {

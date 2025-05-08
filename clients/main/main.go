@@ -24,7 +24,7 @@ func main() {
 	defer cancel()
 
 	numPlayers := 4
-	numGames := 1
+	numGames := 10
 
 	lazyScore := 0
 	randomScore := 0

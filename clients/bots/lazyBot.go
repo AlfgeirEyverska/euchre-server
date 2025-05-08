@@ -112,7 +112,13 @@ func LazyBot(doneChan chan int, ctx context.Context) {
 					log.Println(err)
 					continue
 				}
-				doneChan <- res
+				var winner int
+				if res.Winner == "Even" {
+					winner = 0
+				} else {
+					winner = 1
+				}
+				doneChan <- winner
 				return
 			default:
 				log.Println("Unknown : ", message.Type)
