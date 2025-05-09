@@ -106,7 +106,7 @@ func (gs *euchreGameState) Deal() {
 		log.Println(hands[hand])
 	}
 
-	for i := 0; i < NumPlayers; i++ {
+	for i := range NumPlayers {
 		gs.CurrentPlayer.setHand(hands[i])
 		gs.nextPlayer()
 	}
@@ -564,6 +564,7 @@ func (gs euchreGameState) validPlays(firstPlayer bool, cardLead card) []card {
 	}
 }
 
+// TODO: cleanup
 type responseEnvelope struct {
 	Type string         `json:"type"`
 	Data map[string]int `json:"data"`

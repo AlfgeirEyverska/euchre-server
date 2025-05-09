@@ -107,7 +107,6 @@ func (s *Server) StartGames(ctx context.Context) {
 			log.Println("New game starting. Active games:", numConcurrentGames)
 			mu.Unlock()
 
-			// TODO: do something with gameCancel
 			gameCtx, gameCancel := context.WithCancel(ctx)
 
 			go func() {

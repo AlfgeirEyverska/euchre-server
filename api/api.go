@@ -150,7 +150,6 @@ func HandleUpdateScore(buf json.RawMessage) (ScoreUpdate, error) {
 	}
 	log.Println(message)
 	return message, nil
-
 }
 
 func HandlePlayerID(buf json.RawMessage) (int, error) {
