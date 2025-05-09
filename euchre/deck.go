@@ -18,16 +18,16 @@ func newDeck() deck {
 	return d
 }
 
-func (d deck) shuffleOld() {
-	for i := 0; i < 400; i++ {
-		a := rand.Intn(deckSize)
-		b := rand.Intn(deckSize)
+// func (d deck) shuffleOld() {
+// 	for i := 0; i < 400; i++ {
+// 		a := rand.Intn(deckSize)
+// 		b := rand.Intn(deckSize)
 
-		temp := d[a]
-		d[a] = d[b]
-		d[b] = temp
-	}
-}
+// 		temp := d[a]
+// 		d[a] = d[b]
+// 		d[b] = temp
+// 	}
+// }
 
 func (d deck) shuffle() {
 	/*
@@ -62,4 +62,12 @@ func (d deck) hasA(s suit, trump suit, leftBower card) bool {
 		}
 	}
 	return false
+}
+
+func (d deck) toStrings() []string {
+	strs := make([]string, len(d))
+	for i, c := range d {
+		strs[i] = c.String()
+	}
+	return strs
 }

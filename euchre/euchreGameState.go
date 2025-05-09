@@ -3,34 +3,21 @@ package euchre
 import (
 	"encoding/json"
 	"errors"
+	"euchre/api"
 	"fmt"
 	"log"
 )
 
 const targetScore = 10
 
-type api interface {
+// TODO: Fix bug where trump is not reset after a trick
+
+// api allows for the playerConnectionManager to be replaced with a debugCLI for local testing
+// this may be depricated and something that could be refactored out
+type euchreAPI interface {
 	AskPlayerForX(int, string) string
 	MessagePlayer(int, string)
 	Broadcast(string)
-}
-
-type messageGenerator interface {
-	InvalidCard() string
-	InvalidInput() string
-	PlayCard(int, suit, card, deck, deck, map[int]string) string
-	DealerDiscard(int, suit, card, deck, map[int]string) string
-	PickUpOrPass(int, suit, card, deck, map[int]string) string
-	OrderOrPass(int, suit, card, deck, map[int]string) string
-	GoItAlone(int, suit, card, deck, map[int]string) string
-	DealerMustOrder() string
-	PlayedSoFar([]play) string
-	TricksSoFar(int, int) string
-	UpdateScore(int, int) string
-	DealerUpdate(int) string
-	PlayerOrderedSuit(int, suit) string
-	PlayerOrderedSuitAndGoingAlone(int, suit) string
-	GameOver(string) string
 }
 
 type euchreGameState struct {
@@ -41,16 +28,17 @@ type euchreGameState struct {
 	evenTeamScore int
 	oddTeamScore  int
 	trump         suit
-	API           api
-	Messages      messageGenerator
-	whoOrdered    *player
-	discard       deck
-	flip          card
-	leftBower     card
-	goingItAlone  bool
+	API           euchreAPI
+	// Messages      JsonAPIMessager
+	whoOrdered   int
+	discard      deck
+	flip         card
+	leftBower    card
+	goingItAlone bool
 }
 
-func NewEuchreGameState(myAPI api, myMG messageGenerator) euchreGameState {
+// func NewEuchreGameState(myAPI api, myMG JsonAPI) euchreGameState {
+func NewEuchreGameState(myAPI euchreAPI) euchreGameState {
 	myDeck := newDeck()
 
 	myPlayers := make([]*player, NumPlayers)
@@ -68,7 +56,7 @@ func NewEuchreGameState(myAPI api, myMG messageGenerator) euchreGameState {
 		oddTeamScore:  0,
 		trump:         undefined,
 		API:           myAPI,
-		Messages:      myMG,
+		// Messages:      JsonAPIMessager{},
 	}
 
 	return myGameState
@@ -118,13 +106,14 @@ func (gs *euchreGameState) Deal() {
 		log.Println(hands[hand])
 	}
 
-	for i := 0; i < NumPlayers; i++ {
+	for i := range NumPlayers {
 		gs.CurrentPlayer.setHand(hands[i])
 		gs.nextPlayer()
 	}
 
 	gs.discard = burn
 	gs.flip = burn[0]
+	gs.trump = undefined
 	log.Println(gs.players)
 }
 
@@ -136,18 +125,20 @@ func (gs *euchreGameState) OfferTheFlippedCard() (pickedUp bool) {
 
 	for i := 0; i < NumPlayers; i++ {
 
-		message := gs.Messages.PickUpOrPass(gs.CurrentPlayer.ID, gs.trump, gs.flip, gs.CurrentPlayer.hand, validResponses)
+		message := api.PickUpOrPass(gs.CurrentPlayer.ID, gs.trump.String(), gs.flip.String(), gs.CurrentPlayer.hand.toStrings(), validResponses)
 		response := gs.getValidResponse(gs.CurrentPlayer.ID, message, validResponses)
-		log.Println("FlippedCardResponse ", response)
+		log.Printf("Player %d FlippedCardResponse: %s\n", gs.CurrentPlayer.ID, validResponses[response])
 
 		if response == 2 {
-			gs.playerOrderedSuit(*gs.CurrentPlayer, gs.flip.suit)
+			gs.playerOrderedSuit(gs.CurrentPlayer.ID, gs.flip.suit)
 			pickedUp = true
 			gs.askPlayerIfGoingAlone()
 			return
 		}
 
 		// getValidResponse ensures that if it wasn't "2" it is "1"
+		message = api.PlayerPassed(gs.CurrentPlayer.ID)
+		gs.API.Broadcast(message)
 		gs.nextPlayer()
 		continue
 	}
@@ -165,14 +156,12 @@ func (gs *euchreGameState) DealerDiscard() {
 		responseCards[i+1] = gs.CurrentDealer.hand[i]
 	}
 
-	message := gs.Messages.DealerDiscard(gs.CurrentDealer.ID, gs.trump, gs.flip, gs.CurrentDealer.hand, validResponses)
+	message := api.DealerDiscard(gs.CurrentDealer.ID, gs.trump.String(), gs.flip.String(), gs.CurrentDealer.hand.toStrings(), validResponses)
 
 	response := gs.getValidResponse(gs.CurrentDealer.ID, message, validResponses)
 
-	discarded, ok := responseCards[response]
-	if !ok {
-		log.Fatalln("Unable to get valid card out of responseCards map")
-	}
+	// getValidResponse ensures this should be ok
+	discarded := responseCards[response]
 
 	log.Println("Dealer discarded the ", discarded)
 	gs.CurrentDealer.hand.replace(discarded, gs.flip)
@@ -187,7 +176,7 @@ func (gs *euchreGameState) EstablishTrump() {
 			return
 		}
 		if gs.CurrentPlayer.ID == gs.CurrentDealer.ID {
-			gs.API.MessagePlayer(gs.CurrentDealer.ID, gs.Messages.DealerMustOrder())
+			gs.API.MessagePlayer(gs.CurrentDealer.ID, api.DealerMustOrder())
 		} else {
 			gs.nextPlayer()
 		}
@@ -208,7 +197,7 @@ func (gs *euchreGameState) askPlayerToOrderOrPass() (pass bool) {
 		responseSuits[j] = rs[i]
 	}
 
-	message := gs.Messages.OrderOrPass(gs.CurrentPlayer.ID, gs.trump, gs.flip, gs.CurrentPlayer.hand, validResponses)
+	message := api.OrderOrPass(gs.CurrentPlayer.ID, gs.trump.String(), gs.flip.String(), gs.CurrentPlayer.hand.toStrings(), validResponses)
 
 	response := gs.getValidResponse(gs.CurrentPlayer.ID, message, validResponses)
 	log.Println("OrderOrPassResponse ", response)
@@ -218,7 +207,7 @@ func (gs *euchreGameState) askPlayerToOrderOrPass() (pass bool) {
 		return
 	}
 	pass = false
-	gs.playerOrderedSuit(*gs.CurrentPlayer, responseSuits[response])
+	gs.playerOrderedSuit(gs.CurrentPlayer.ID, responseSuits[response])
 
 	gs.askPlayerIfGoingAlone()
 
@@ -229,17 +218,17 @@ func (gs *euchreGameState) askPlayerIfGoingAlone() {
 
 	validResponses := map[int]string{1: "Yes", 2: "No"}
 
-	message := gs.Messages.GoItAlone(gs.CurrentPlayer.ID, gs.trump, gs.flip, gs.CurrentPlayer.hand, validResponses)
+	message := api.GoItAlone(gs.CurrentPlayer.ID, gs.trump.String(), gs.flip.String(), gs.CurrentPlayer.hand.toStrings(), validResponses)
 
 	response := gs.getValidResponse(gs.CurrentPlayer.ID, message, validResponses)
-	log.Println("AloneResponse ", response)
+	log.Printf("Player %d going alone? %s", gs.CurrentPlayer.ID, validResponses[response])
 
 	gs.goingItAlone = response == 1
 
 	if gs.goingItAlone {
-		message = gs.Messages.PlayerOrderedSuitAndGoingAlone(gs.CurrentPlayer.ID, gs.trump)
+		message = api.PlayerOrderedSuitAndGoingAlone(gs.CurrentPlayer.ID, gs.trump.String())
 	} else {
-		message = gs.Messages.PlayerOrderedSuit(gs.CurrentPlayer.ID, gs.trump)
+		message = api.PlayerOrderedSuit(gs.CurrentPlayer.ID, gs.trump.String())
 	}
 	gs.API.Broadcast(message)
 }
@@ -257,13 +246,12 @@ func (gs *euchreGameState) askPlayerToPlayCard(firstPlayer bool, cardLead card) 
 		responseCards[prettyIdx] = v
 	}
 
-	message := gs.Messages.PlayCard(gs.CurrentPlayer.ID, gs.trump, gs.flip, gs.CurrentPlayer.hand, playableCards, validResponses)
+	message := api.PlayCard(gs.CurrentPlayer.ID, gs.trump.String(), gs.flip.String(), gs.CurrentPlayer.hand.toStrings(), validResponses)
 	response := gs.getValidResponse(gs.CurrentPlayer.ID, message, validResponses)
 
-	valueCard, ok := responseCards[response]
-	if !ok {
-		log.Fatalln("Unable to get valid card out of responseCards map")
-	}
+	// getValidResponse ensures this should be ok
+	valueCard := responseCards[response]
+
 	// REMOVE
 	// time.Sleep(500 * time.Millisecond)
 	return play{gs.CurrentPlayer, valueCard}
@@ -272,6 +260,8 @@ func (gs *euchreGameState) askPlayerToPlayCard(firstPlayer bool, cardLead card) 
 func (gs *euchreGameState) Play5Tricks() {
 	evenScore := 0
 	oddScore := 0
+
+	gs.ResetFirstPlayer()
 
 	for trickN := 0; trickN < 5; trickN++ {
 
@@ -285,7 +275,10 @@ func (gs *euchreGameState) Play5Tricks() {
 			oddScore++
 		}
 
-		message := gs.Messages.TricksSoFar(evenScore, oddScore)
+		message := api.TrickWinner(winningPlay.cardPlayer.ID)
+		gs.API.Broadcast(message)
+
+		message = api.TricksSoFar(evenScore, oddScore)
 		gs.API.Broadcast(message)
 		log.Println("Even Trick Score ", evenScore, " | Odd Trick Score", oddScore)
 
@@ -296,7 +289,7 @@ func (gs *euchreGameState) Play5Tricks() {
 	gs.awardPoints(evenScore, oddScore)
 	gs.goingItAlone = false
 
-	message := gs.Messages.UpdateScore(gs.evenTeamScore, gs.oddTeamScore)
+	message := api.UpdateScore(gs.evenTeamScore, gs.oddTeamScore)
 	gs.API.Broadcast(message)
 
 	log.Printf("Even Score: %d  Odd Score %d \n", gs.evenTeamScore, gs.oddTeamScore)
@@ -307,7 +300,7 @@ func (gs *euchreGameState) Play5Tricks() {
 		} else {
 			winner = "Odd"
 		}
-		message = gs.Messages.GameOver(winner)
+		message = api.GameOver(winner)
 		gs.API.Broadcast(message)
 	}
 }
@@ -332,7 +325,7 @@ func (gs *euchreGameState) playTrick() play {
 	for playerN := 1; playerN < currentNumPlayers; playerN++ {
 		// Get valid card from player
 		for {
-			message := gs.Messages.PlayedSoFar(plays)
+			message := api.PlayedSoFar(playsToPlayJSON(plays))
 			gs.API.Broadcast(message)
 
 			currentPlay := gs.askPlayerToPlayCard(false, cardLead)
@@ -345,10 +338,11 @@ func (gs *euchreGameState) playTrick() play {
 				break
 			}
 			log.Println("Player ", gs.CurrentPlayer.ID, " played invalid card.")
-			gs.API.MessagePlayer(gs.CurrentPlayer.ID, gs.Messages.InvalidCard())
+			gs.API.MessagePlayer(gs.CurrentPlayer.ID, api.InvalidCard())
 		}
-
 	}
+	message := api.PlayedSoFar(playsToPlayJSON(plays))
+	gs.API.Broadcast(message)
 	// check winning card
 	winningPlay := plays[0]
 	for i := 1; i < len(plays); i++ {
@@ -367,8 +361,7 @@ func nextPlayerID(p player) int {
 
 func (gs *euchreGameState) NextDealer() {
 	gs.CurrentDealer = gs.players[nextPlayerID(*gs.CurrentDealer)]
-	// For some reason this broke the player progression
-	// gs.CurrentPlayer = gs.players[nextPlayerID(*gs.CurrentDealer)]
+	log.Printf("Dealer set to player %d", gs.CurrentDealer.ID)
 }
 
 func (gs *euchreGameState) nextPlayer() {
@@ -377,7 +370,7 @@ func (gs *euchreGameState) nextPlayer() {
 
 	if gs.goingItAlone {
 
-		lonePlayerID := gs.whoOrdered.ID
+		lonePlayerID := gs.whoOrdered
 		lonePlayerPartner := (lonePlayerID + 2) % NumPlayers
 
 		if gs.CurrentPlayer.ID == lonePlayerPartner {
@@ -387,7 +380,9 @@ func (gs *euchreGameState) nextPlayer() {
 }
 
 func (gs *euchreGameState) ResetFirstPlayer() {
-	gs.CurrentPlayer = gs.players[nextPlayerID(*gs.CurrentDealer)]
+	// This sequence handles the case where the player after the dealer is excluded by lone partner
+	gs.CurrentPlayer = gs.CurrentDealer
+	gs.nextPlayer()
 }
 
 func (gs *euchreGameState) setFirstPlayer(p player) {
@@ -397,7 +392,7 @@ func (gs *euchreGameState) setFirstPlayer(p player) {
 func (gs euchreGameState) numPoints(evenScore int, oddScore int) int {
 
 	if gs.goingItAlone {
-		if gs.whoOrdered.ID%2 == 0 {
+		if gs.whoOrdered%2 == 0 {
 			if evenScore == 5 {
 				return 4
 			}
@@ -419,7 +414,7 @@ func (gs euchreGameState) numPoints(evenScore int, oddScore int) int {
 			}
 		}
 	} else {
-		if gs.whoOrdered.ID%2 == 0 {
+		if gs.whoOrdered%2 == 0 {
 			if evenScore == 5 {
 				return 2
 			}
@@ -462,10 +457,12 @@ func (gs *euchreGameState) oddTeamScored(n int) {
 	gs.oddTeamScore += n
 }
 
-func (gs *euchreGameState) playerOrderedSuit(p player, s suit) {
-	gs.whoOrdered = &p
+func (gs *euchreGameState) playerOrderedSuit(id int, s suit) {
+	gs.whoOrdered = id
 	gs.trump = s
 	gs.leftBower = gs.getLeftBower()
+
+	// TODO: Fix resetting the first player. The bots were able to go it alone and it skipped my partner instead
 	log.Println(gs.trump, "s are trump.")
 }
 
@@ -567,6 +564,7 @@ func (gs euchreGameState) validPlays(firstPlayer bool, cardLead card) []card {
 	}
 }
 
+// TODO: cleanup
 type responseEnvelope struct {
 	Type string         `json:"type"`
 	Data map[string]int `json:"data"`
@@ -577,7 +575,10 @@ func unpackJson(message string) (int, error) {
 
 	err := json.Unmarshal([]byte(message), &responseEnv)
 	if err != nil {
-		log.Println("Unable to unpack json")
+		log.Println("\n\nUnable to unpack json")
+		log.Println("Raw Message: ", message)
+		log.Println("Message type: ", responseEnv.Type)
+		log.Println("Message data: ", responseEnv.Data)
 		return 0, errors.New("unable to unmarshal response envelope")
 	}
 
@@ -598,13 +599,13 @@ func (gs euchreGameState) getValidResponse(playerID int, message string, validRe
 
 		res, err := unpackJson(response)
 		if err != nil {
-			gs.API.MessagePlayer(playerID, gs.Messages.InvalidInput())
+			gs.API.MessagePlayer(playerID, api.InvalidInput())
 			continue
 		}
 
 		_, ok := validResponses[res]
 		if !ok {
-			gs.API.MessagePlayer(playerID, gs.Messages.InvalidInput())
+			gs.API.MessagePlayer(playerID, api.InvalidInput())
 			continue
 		}
 		return res

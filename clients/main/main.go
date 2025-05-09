@@ -1,7 +1,8 @@
 package main
 
 import (
-	bots "bots/common"
+	"context"
+	"euchre/clients/bots"
 	"fmt"
 	"log"
 	"os"
@@ -11,15 +12,19 @@ func main() {
 
 	logFile, err := os.OpenFile("euchreBot.log", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
 	if err != nil {
-		log.Fatal(err)
+		log.Println(err)
+		log.SetOutput(os.Stdout)
+	} else {
+		defer logFile.Close()
+		log.SetOutput(logFile)
 	}
-	defer logFile.Close()
-	// log.SetOutput(os.Stdout)
-	log.SetOutput(logFile)
 	log.SetFlags(log.LstdFlags | log.Lshortfile)
 
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	numPlayers := 4
-	numGames := 1
+	numGames := 10
 
 	lazyScore := 0
 	randomScore := 0
@@ -41,9 +46,9 @@ gameLoop:
 
 			doneChans = append(doneChans, doneChan)
 			if i%2 == 0 {
-				go bots.LazyBot(doneChan)
+				go bots.LazyBot(doneChan, ctx)
 			} else {
-				go bots.RandomBot(doneChan)
+				go bots.RandomBot(doneChan, ctx)
 			}
 			// time.Sleep(1 * time.Second)
 		}

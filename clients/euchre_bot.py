@@ -8,7 +8,7 @@ PORT = 8080
 
 def encode_response(message_type, data):
     response = {"type": message_type, "data": {"response": data}}
-    response = json.dumps(response)
+    response = json.dumps(response) + '\n'
     response = response.encode()
     return response
 
@@ -18,17 +18,16 @@ def play(id):
         sock.connect((HOST, PORT))
         sock_file = sock.makefile("r", encoding="utf-8")
         
-        sock.send(b"hello")
+        sock.send(encode_response("hello", "hello"))
         
         while True:
             try:
                 line = sock_file.readline()
             except ConnectionResetError as e:
-                # print("Connection reset by peer")
                 return
             
             if not line:
-                break
+                return
             
             message = json.loads(line)
 
@@ -96,23 +95,26 @@ def play(id):
                     # print(message["data"])
                     # handleError(message.Data)
                 case "gameOver":
-                    pass
+                    return
                     # print(message["data"])
                     # res = handleGameOver(message.Data)
                 case _:
                     print("Unknown message type: ", message["type"])
 
             # time.sleep(1)
-            time.sleep(0.05)
+            # time.sleep(0.05)
 
 
 
 if __name__=="__main__":
+
     players = []
+    
     for i in range(4):
         p = Process(target=play, args=(i,))
         players.append(p)
         p.start()
     
-    for player in players:
+    for i, player in enumerate(players):
+            print("waiting on player ", i)
             player.join()
