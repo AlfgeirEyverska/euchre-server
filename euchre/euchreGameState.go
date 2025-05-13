@@ -1,16 +1,12 @@
 package euchre
 
 import (
-	"encoding/json"
-	"errors"
 	"euchre/api"
 	"fmt"
 	"log"
 )
 
 const targetScore = 10
-
-// TODO: Fix bug where trump is not reset after a trick
 
 // api allows for the playerConnectionManager to be replaced with a debugCLI for local testing
 // this may be depricated and something that could be refactored out
@@ -462,7 +458,6 @@ func (gs *euchreGameState) playerOrderedSuit(id int, s suit) {
 	gs.trump = s
 	gs.leftBower = gs.getLeftBower()
 
-	// TODO: Fix resetting the first player. The bots were able to go it alone and it skipped my partner instead
 	log.Println(gs.trump, "s are trump.")
 }
 
@@ -564,40 +559,13 @@ func (gs euchreGameState) validPlays(firstPlayer bool, cardLead card) []card {
 	}
 }
 
-// TODO: cleanup
-type responseEnvelope struct {
-	Type string         `json:"type"`
-	Data map[string]int `json:"data"`
-}
-
-func unpackJson(message string) (int, error) {
-	responseEnv := responseEnvelope{}
-
-	err := json.Unmarshal([]byte(message), &responseEnv)
-	if err != nil {
-		log.Println("\n\nUnable to unpack json")
-		log.Println("Raw Message: ", message)
-		log.Println("Message type: ", responseEnv.Type)
-		log.Println("Message data: ", responseEnv.Data)
-		return 0, errors.New("unable to unmarshal response envelope")
-	}
-
-	res, ok := responseEnv.Data["response"]
-	if !ok {
-		log.Println("Response not found in message")
-		return 0, errors.New("\"response\" not found in message")
-	}
-
-	return res, nil
-}
-
 // getValidResponse is an infinite loop will not return until player gives a valid response
 // The response string that is returned will always be a valid key of the validResponses map that is passed in
 func (gs euchreGameState) getValidResponse(playerID int, message string, validResponses map[int]string) int {
 	for {
 		response := gs.API.AskPlayerForX(playerID, message)
 
-		res, err := unpackJson(response)
+		res, err := api.IntFromResponse(response)
 		if err != nil {
 			gs.API.MessagePlayer(playerID, api.InvalidInput())
 			continue

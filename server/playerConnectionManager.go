@@ -1,6 +1,7 @@
 package server
 
 import (
+	"bufio"
 	"context"
 	"encoding/json"
 	"euchre/api"
@@ -63,11 +64,7 @@ func (pcm *PlayerConnectionManager) GreetPlayers() {
 // greetPlayer messages the player its player id
 func (pcm *PlayerConnectionManager) greetPlayer(playerID int) {
 
-	playerIDMsg := api.ServerEnvelope{
-		Type:    "playerID",
-		Data:    playerID,
-		Message: fmt.Sprintf("You are player %d\n", playerID),
-	}
+	playerIDMsg := api.NewEnvelope("playerID", playerID, fmt.Sprintf("You are player %d", playerID))
 
 	message, _ := json.Marshal(playerIDMsg)
 
@@ -83,7 +80,7 @@ func handleConnection(ctx context.Context, playerConn *playerConnection) {
 		playerConn.conn.Close()
 	}()
 
-	buf := make([]byte, 1024)
+	reader := bufio.NewReader(playerConn.conn)
 	for {
 		// Removing the read deadline broke the connections
 		playerConn.conn.SetReadDeadline(time.Now().Add(6 * time.Minute))
@@ -111,14 +108,13 @@ func handleConnection(ctx context.Context, playerConn *playerConnection) {
 				return
 			}
 
-			// TODO: consider using a buffered reader and reading until newlines. This seems to be working fine.
-			n, err := playerConn.conn.Read(buf)
+			buf, err := reader.ReadBytes('\n')
 			if err != nil {
-				fmt.Println("Error Reading From Conn")
-				fmt.Println(err)
+				log.Println(err)
 				return
 			}
-			playerConn.responseChan <- string(buf[:n])
+
+			playerConn.responseChan <- string(buf)
 		}
 	}
 }

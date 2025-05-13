@@ -11,8 +11,6 @@ import (
 	"net"
 )
 
-// TODO: there seems to be a bug in who gets stuck with choosing the suit and a separate one where the dealer can call suit before players pass
-
 func sendRandomResponse(messageType string, validResponses map[int]string, writer net.Conn) {
 
 	log.Println("Valid Responses Map:\n", validResponses)
@@ -45,7 +43,6 @@ func RandomBot(doneChan chan int, ctx context.Context) {
 	defer func() {
 		conn.Close()
 		close(doneChan)
-		// cancel()
 	}()
 
 	clients.SayHello(conn)
@@ -60,16 +57,14 @@ func RandomBot(doneChan chan int, ctx context.Context) {
 			buf, err := reader.ReadBytes('\n')
 			if err != nil {
 				log.Println(err)
-				// cancel()
 				return
 			}
 
-			var message api.ClientEnvelope
+			var message api.Envelope
 			err = json.Unmarshal(buf, &message)
 			if err != nil {
 				log.Println("Original Unmarshal Failure: ", string(buf))
 				log.Println(err)
-				// cancel()
 				return
 			}
 
@@ -80,55 +75,55 @@ func RandomBot(doneChan chan int, ctx context.Context) {
 			case "connectionCheck":
 				clients.HandleConnectionCheck(conn)
 			case "pickUpOrPass":
-				res, err := api.HandleRequestForResponse(message.Data)
+				res, err := api.RequestForResponseFromJson(message.Data)
 				if err != nil {
 					log.Println(err)
 				}
 				sendRandomResponse(message.Type, res.ValidRes, conn)
 			case "orderOrPass":
-				res, err := api.HandleRequestForResponse(message.Data)
+				res, err := api.RequestForResponseFromJson(message.Data)
 				if err != nil {
 					log.Println(err)
 				}
 				// res := api.HandleOrderOrPass(message.Data)
 				sendRandomResponse(message.Type, res.ValidRes, conn)
 			case "dealerDiscard":
-				res, err := api.HandleRequestForResponse(message.Data)
+				res, err := api.RequestForResponseFromJson(message.Data)
 				if err != nil {
 					log.Println(err)
 				}
 				// res := api.HandleDealerDiscard(message.Data)
 				sendRandomResponse(message.Type, res.ValidRes, conn)
 			case "playCard":
-				res, err := api.HandleRequestForResponse(message.Data)
+				res, err := api.RequestForResponseFromJson(message.Data)
 				if err != nil {
 					log.Println(err)
 				}
 				// res := api.HandlePlayCard(message.Data)
 				sendRandomResponse(message.Type, res.ValidRes, conn)
 			case "goItAlone":
-				res, err := api.HandleRequestForResponse(message.Data)
+				res, err := api.RequestForResponseFromJson(message.Data)
 				if err != nil {
 					log.Println(err)
 				}
 				// res := api.HandleGoItAlone(message.Data)
 				sendRandomResponse(message.Type, res.ValidRes, conn)
 			case "playerID":
-				api.HandlePlayerID(message.Data)
+				api.PlayerIDFromJson(message.Data)
 			case "dealerUpdate":
-				api.HandleDealerUpdate(message.Data)
+				api.DealerUpdateFromJson(message.Data)
 			case "suitOrdered":
-				api.HandleSuitOrdered(message.Data)
+				api.SuitOrderedFromJson(message.Data)
 			case "plays":
-				api.HandlePlays(message.Data)
+				api.PlayJSONFromJson(message.Data)
 			case "trickScore":
-				api.HandleTrickScore(message.Data)
+				api.TrickScoreUpdateFromJson(message.Data)
 			case "updateScore":
-				api.HandleUpdateScore(message.Data)
+				api.ScoreUpdateFromJson(message.Data)
 			case "error":
-				api.HandleError(message.Data)
+				api.ErrorFromJson(message.Data)
 			case "gameOver":
-				res, err := api.HandleGameOver(message.Data)
+				res, err := api.WinnerUpdateFromJson(message.Data)
 				if err != nil {
 					log.Println(err)
 					continue
