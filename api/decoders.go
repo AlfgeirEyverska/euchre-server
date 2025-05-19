@@ -5,8 +5,8 @@ import (
 	"log"
 )
 
-func SuitOrderedFromJson(buf json.RawMessage) (suitOrdered, error) {
-	var message suitOrdered
+func SuitOrderedFromJson(buf json.RawMessage) (SuitOrdered, error) {
+	var message SuitOrdered
 	err := json.Unmarshal(buf, &message)
 	if err != nil {
 		return message, err
@@ -24,8 +24,8 @@ func RequestForResponseFromJson(buf json.RawMessage) (RequestForResponse, error)
 	return message, nil
 }
 
-func DealerUpdateFromJson(buf json.RawMessage) (dealerUpdate, error) {
-	var message dealerUpdate
+func DealerUpdateFromJson(buf json.RawMessage) (DealerUpdate, error) {
+	var message DealerUpdate
 	err := json.Unmarshal(buf, &message)
 	if err != nil {
 		return message, err
@@ -44,8 +44,8 @@ func PlayJSONFromJson(buf json.RawMessage) ([]PlayJSON, error) {
 	return message, nil
 }
 
-func TrickScoreUpdateFromJson(buf json.RawMessage) (trickScoreUptade, error) {
-	var message trickScoreUptade
+func TrickScoreUpdateFromJson(buf json.RawMessage) (TrickScoreUptade, error) {
+	var message TrickScoreUptade
 	err := json.Unmarshal(buf, &message)
 	if err != nil {
 		return message, err
@@ -54,8 +54,8 @@ func TrickScoreUpdateFromJson(buf json.RawMessage) (trickScoreUptade, error) {
 	return message, nil
 }
 
-func ScoreUpdateFromJson(buf json.RawMessage) (scoreUpdate, error) {
-	var message scoreUpdate
+func ScoreUpdateFromJson(buf json.RawMessage) (ScoreUpdate, error) {
+	var message ScoreUpdate
 	err := json.Unmarshal(buf, &message)
 	if err != nil {
 		return message, err
@@ -85,8 +85,8 @@ func PlayerIDFromJson(buf json.RawMessage) (int, error) {
 	return pid, nil
 }
 
-func WinnerUpdateFromJson(buf json.RawMessage) (winnerUpdate, error) {
-	var message winnerUpdate
+func WinnerUpdateFromJson(buf json.RawMessage) (WinnerUpdate, error) {
+	var message WinnerUpdate
 	err := json.Unmarshal(buf, &message)
 	if err != nil {
 		return message, err

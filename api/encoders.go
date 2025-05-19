@@ -45,7 +45,7 @@ func GameOver(winner string) string {
 	msgType := "gameOver"
 	msg := fmt.Sprint("Game Over! ", winner, " Team Won!")
 
-	data := winnerUpdate{Winner: winner}
+	data := WinnerUpdate{Winner: winner}
 
 	message := NewEnvelope(msgType, data, msg)
 
@@ -70,7 +70,7 @@ func TrickWinner(playerID int) string {
 	msgType := "trickWinner"
 	msg := fmt.Sprintf("Player %d won the trick.", playerID)
 
-	data := trickWinnerUpdate{PlayerID: playerID, Action: "won trick"}
+	data := TrickWinnerUpdate{PlayerID: playerID, Action: "won trick"}
 
 	message := NewEnvelope(msgType, data, msg)
 
@@ -82,7 +82,7 @@ func TricksSoFar(evenScore int, oddScore int) string {
 	msgType := "trickScore"
 	msg := fmt.Sprintf("Even trick score: %d  |  Odd trick score: %d", evenScore, oddScore)
 
-	data := trickScoreUptade{
+	data := TrickScoreUptade{
 		EvenTrickScore: evenScore,
 		OddTrickScore:  oddScore,
 	}
@@ -97,7 +97,7 @@ func UpdateScore(evenScore int, oddScore int) string {
 	msgType := "updateScore"
 	msg := fmt.Sprintf("Even score: %d  |  Odd score: %d", evenScore, oddScore)
 
-	data := scoreUpdate{
+	data := ScoreUpdate{
 		EvenScore: evenScore,
 		OddScore:  oddScore,
 	}
@@ -111,7 +111,7 @@ func UpdateDealer(playerID int) string {
 
 	msgType := "dealerUpdate"
 	msg := fmt.Sprint("Player ", playerID, " is dealing.")
-	data := dealerUpdate{Dealer: playerID}
+	data := DealerUpdate{Dealer: playerID}
 
 	message := NewEnvelope(msgType, data, msg)
 
@@ -139,7 +139,7 @@ func PlayerOrderedSuit(playerID int, trump string) string {
 	msgType := "suitOrdered"
 	msg := fmt.Sprint("Player ", playerID, " Ordered ", trump, "s.")
 
-	data := suitOrdered{
+	data := SuitOrdered{
 		PlayerID:   playerID,
 		Action:     "Ordered",
 		Trump:      trump,
@@ -156,7 +156,7 @@ func PlayerOrderedSuitAndGoingAlone(playerID int, trump string) string {
 	msgType := "suitOrdered"
 	msg := fmt.Sprint("Player ", playerID, " Ordered ", trump, "s and is going it alone.")
 
-	data := suitOrdered{
+	data := SuitOrdered{
 		PlayerID:   playerID,
 		Action:     "Ordered",
 		Trump:      trump,
@@ -175,7 +175,7 @@ func PlayCard(playerID int, trump string, flip string, hand []string, validRespo
 	msgType := "playCard"
 	msg := "It is your turn. What would you like to play?"
 
-	pi := playerInfo{PlayerID: playerID, Trump: trump, Flip: flip, Hand: hand}
+	pi := PlayerInfo{PlayerID: playerID, Trump: trump, Flip: flip, Hand: hand}
 	data := RequestForResponse{Info: pi, ValidRes: validResponses}
 
 	message := NewEnvelope(msgType, data, msg)
@@ -188,7 +188,7 @@ func DealerDiscard(playerID int, trump string, flip string, hand []string, valid
 	msgType := "dealerDiscard"
 	msg := "You must discard."
 
-	pi := playerInfo{PlayerID: playerID, Trump: trump, Flip: flip, Hand: hand}
+	pi := PlayerInfo{PlayerID: playerID, Trump: trump, Flip: flip, Hand: hand}
 	data := RequestForResponse{Info: pi, ValidRes: validResponses}
 
 	message := NewEnvelope(msgType, data, msg)
@@ -201,7 +201,7 @@ func PickUpOrPass(playerID int, trump string, flip string, hand []string, validR
 	msgType := "pickUpOrPass"
 	msg := "Tell the dealer to pick it up or pass."
 
-	pi := playerInfo{PlayerID: playerID, Trump: trump, Flip: flip, Hand: hand}
+	pi := PlayerInfo{PlayerID: playerID, Trump: trump, Flip: flip, Hand: hand}
 	data := RequestForResponse{Info: pi, ValidRes: validResponses}
 
 	message := NewEnvelope(msgType, data, msg)
@@ -214,7 +214,7 @@ func OrderOrPass(playerID int, trump string, flip string, hand []string, validRe
 	msgType := "orderOrPass"
 	msg := fmt.Sprintf("%s Was burried. Order a suit or pass.", flip)
 
-	pi := playerInfo{PlayerID: playerID, Trump: trump, Flip: flip, Hand: hand}
+	pi := PlayerInfo{PlayerID: playerID, Trump: trump, Flip: flip, Hand: hand}
 	data := RequestForResponse{Info: pi, ValidRes: validResponses}
 
 	message := NewEnvelope(msgType, data, msg)
@@ -227,7 +227,7 @@ func GoItAlone(playerID int, trump string, flip string, hand []string, validResp
 	msgType := "goItAlone"
 	msg := "Would you like to go it alone?"
 
-	pi := playerInfo{PlayerID: playerID, Trump: trump, Flip: flip, Hand: hand}
+	pi := PlayerInfo{PlayerID: playerID, Trump: trump, Flip: flip, Hand: hand}
 	data := RequestForResponse{Info: pi, ValidRes: validResponses}
 
 	message := NewEnvelope(msgType, data, msg)

@@ -7,18 +7,18 @@ import (
 	"log"
 )
 
-// responseEnvelope is the type sent to the server by the client
-type responseEnvelope struct {
+// ResponseEnvelope is the type sent to the server by the client
+type ResponseEnvelope struct {
 	Type string          `json:"type"`
 	Data json.RawMessage `json:"data"`
 }
 
-func NewResponseEnvelope(messageType string, data any) responseEnvelope {
+func NewResponseEnvelope(messageType string, data any) ResponseEnvelope {
 	jsonData, err := json.Marshal(data)
 	if err != nil {
 		log.Println("Json Marshalling Error")
 	}
-	return responseEnvelope{Type: messageType, Data: jsonData}
+	return ResponseEnvelope{Type: messageType, Data: jsonData}
 }
 
 func EncodeResponse(messageType string, data any) []byte {
@@ -36,11 +36,11 @@ func EncodeResponse(messageType string, data any) []byte {
 	return message
 }
 
-func DecodeResponse(message string) (responseEnvelope, error) {
+func DecodeResponse(message string) (ResponseEnvelope, error) {
 
 	// log.Printf("RESPONSE BEING UNPACKED:\v%v", message)
 
-	responseEnv := responseEnvelope{}
+	responseEnv := ResponseEnvelope{}
 
 	err := json.Unmarshal([]byte(message), &responseEnv)
 	if err != nil {
