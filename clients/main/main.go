@@ -8,8 +8,7 @@ import (
 	"os"
 )
 
-func main() {
-
+func testBots() {
 	logFile, err := os.OpenFile("euchreBot.log", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
 	if err != nil {
 		log.Println(err)
@@ -24,7 +23,7 @@ func main() {
 	defer cancel()
 
 	numPlayers := 4
-	numGames := 10
+	numGames := 1
 
 	lazyScore := 0
 	randomScore := 0
@@ -81,5 +80,67 @@ gameLoop:
 	fmt.Printf("Lazy wins: %d\nRandom wins: %d\n", lazyScore, randomScore)
 	failureRate := 100.0 * (float64(failedGames) / float64(numGames))
 	fmt.Printf("Failed Games: %d, %.0f%%\n", failedGames, failureRate)
+}
 
+func threeRandomBots() {
+
+	logFile, err := os.OpenFile("euchreBot.log", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
+	if err != nil {
+		log.Println(err)
+		log.SetOutput(os.Stdout)
+	} else {
+		defer logFile.Close()
+		log.SetOutput(logFile)
+	}
+	log.SetFlags(log.LstdFlags | log.Lshortfile)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	numPlayers := 3
+
+	doneChans := []chan int{}
+	failedGames := 0
+
+	for range numPlayers {
+
+		doneChan := make(chan int, 1)
+
+		doneChans = append(doneChans, doneChan)
+
+		go bots.RandomBot(doneChan, ctx)
+		// time.Sleep(1 * time.Second)
+	}
+
+	var ok bool
+	for i := range numPlayers {
+		log.Println("Waiting for player ", i)
+		_, ok = <-doneChans[i]
+		if !ok {
+			log.Println("Player ", i, " failed to complete. Game Aborted.")
+			failedGames++
+			doneChans = nil
+		}
+	}
+	doneChans = nil
+
+	log.Println("Game Over!!")
+
+	// time.Sleep(1000 * time.Millisecond)
+
+}
+
+func runRandomBot() {
+
+	doneChan := make(chan int, 1)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	bots.RandomBot(doneChan, ctx)
+	<-doneChan
+}
+
+func main() {
+	threeRandomBots()
 }

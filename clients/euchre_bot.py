@@ -8,7 +8,7 @@ PORT = 8080
 
 def encode_response(message_type, data):
     response = {"type": message_type, "data": {"response": data}}
-    response = json.dumps(response) + '\n'
+    response = json.dumps(response) + "\n"
     response = response.encode()
     return response
 
@@ -43,29 +43,36 @@ def play(id):
                     # print(message["data"])
                     response = encode_response(message["type"], "Pong")
                     sock.send(response)
+                    print("RESPONSE: ", response)
                 case "pickUpOrPass":
                     # print(message["data"])
                     response = encode_response(message["type"], 1)
+                    print(response)
                     sock.send(response)
+                    print("RESPONSE: ", response)
                     # handlePickUpOrPass(message.Data)
                 case "orderOrPass":
                     # print(message["data"])
                     response = encode_response(message["type"], 2)
                     sock.send(response)
+                    print("RESPONSE: ", response)
                     # handleOrderOrPass(message.Data)
                 case "dealerDiscard":
                     # print(message["data"])
                     response = encode_response(message["type"], 1)
                     sock.send(response)
+                    print("RESPONSE: ", response)
                     # handleDealerDiscard(message.Data)
                 case "playCard":
                     # print(message["data"])
                     response = encode_response(message["type"], 1)
-                    sock.send(response)                    # handlePlayCard(message.Data)
+                    sock.send(response)      
+                    print("RESPONSE: ", response)              # handlePlayCard(message.Data)
                 case "goItAlone":
                     # print(message["data"])
                     response = encode_response(message["type"], 2)
-                    sock.send(response)                    # handleGoItAlone(message.Data)
+                    sock.send(response)           
+                    print("RESPONSE: ", response)         # handleGoItAlone(message.Data)
                 case "playerID":
                     pass
                     # print(message["data"])
@@ -90,6 +97,10 @@ def play(id):
                     pass
                     # print(message["data"])
                     # handleUpdateScore(message.Data)
+                case "playerPassed":
+                    pass
+                case "trickWinner":
+                    pass
                 case "error":
                     pass
                     # print(message["data"])
@@ -110,7 +121,8 @@ if __name__=="__main__":
 
     players = []
     
-    for i in range(4):
+    n_players = 1
+    for i in range(n_players):
         p = Process(target=play, args=(i,))
         players.append(p)
         p.start()

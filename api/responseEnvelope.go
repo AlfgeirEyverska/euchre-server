@@ -36,6 +36,11 @@ func EncodeResponse(messageType string, data any) []byte {
 	return message
 }
 
+func EncodeResponseInt(messageType string, data int) []byte {
+	resp := responseInt{data}
+	return EncodeResponse(messageType, resp)
+}
+
 func DecodeResponse(message string) (ResponseEnvelope, error) {
 
 	// log.Printf("RESPONSE BEING UNPACKED:\v%v", message)

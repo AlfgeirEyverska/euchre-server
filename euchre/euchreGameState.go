@@ -568,12 +568,14 @@ func (gs euchreGameState) getValidResponse(playerID int, message string, validRe
 		res, err := api.IntFromResponse(response)
 		if err != nil {
 			gs.API.MessagePlayer(playerID, api.InvalidInput())
+			log.Println("Error getting int from response")
 			continue
 		}
 
 		_, ok := validResponses[res]
 		if !ok {
 			gs.API.MessagePlayer(playerID, api.InvalidInput())
+			log.Println("Response not valid")
 			continue
 		}
 		return res

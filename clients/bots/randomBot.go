@@ -14,7 +14,6 @@ import (
 func sendRandomResponse(messageType string, validResponses map[int]string, writer net.Conn) {
 
 	log.Println("Valid Responses Map:\n", validResponses)
-	log.Println("Length of map: ", len(validResponses))
 	var n int
 	if len(validResponses) > 1 {
 		n = rand.Intn(len(validResponses)) + 1
@@ -23,9 +22,9 @@ func sendRandomResponse(messageType string, validResponses map[int]string, write
 	}
 	log.Println("Random n chosen: ", n)
 
-	response := api.EncodeResponse(messageType, n)
+	response := api.EncodeResponseInt(messageType, n)
 
-	log.Println("Message: ", response)
+	log.Printf("Message: %s\n", response)
 	_, err := writer.Write(response)
 	if err != nil {
 		log.Println(err)

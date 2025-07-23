@@ -83,8 +83,8 @@ func handleConnection(ctx context.Context, playerConn *playerConnection) {
 	reader := bufio.NewReader(playerConn.conn)
 	for {
 		// Removing the read deadline broke the connections
-		playerConn.conn.SetReadDeadline(time.Now().Add(6 * time.Minute))
-		playerConn.conn.SetWriteDeadline(time.Now().Add(6 * time.Minute))
+		playerConn.conn.SetReadDeadline(time.Now().Add(5 * time.Minute))
+		playerConn.conn.SetWriteDeadline(time.Now().Add(5 * time.Minute))
 
 		select {
 		case <-ctx.Done():

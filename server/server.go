@@ -99,7 +99,7 @@ func (s *Server) StartGames(ctx context.Context) {
 				continue
 			}
 
-			playerConns := makeLobby(s.connChan, s.tracker)
+			lobby := makeLobby(s.connChan, s.tracker)
 
 			mu.Lock()
 			numConcurrentGames++
@@ -107,11 +107,31 @@ func (s *Server) StartGames(ctx context.Context) {
 			log.Println("New game starting. Active games:", numConcurrentGames)
 			mu.Unlock()
 
-			gameCtx, gameCancel := context.WithCancel(ctx)
+			gameCtx, gameCancel := context.WithTimeout(ctx, 40*time.Minute)
 
 			go func() {
 				defer gameCancel()
-				startGame(gameCtx, playerConns, &mu, &numConcurrentGames, s.tracker)
+				startGame(gameCtx, lobby, &mu, &numConcurrentGames, s.tracker)
+			}()
+
+			// monitor the lobby for dead connections
+			go func() {
+				for {
+					select {
+					case <-gameCtx.Done():
+						return
+					default:
+						time.Sleep(25 * time.Second)
+
+						for _, conn := range lobby {
+							if !isAlive(conn) {
+								s.tracker.done(conn)
+								_ = conn.Close() // ignore error — shutting down anyway
+								gameCancel()
+							}
+						}
+					}
+				}
 			}()
 
 		}
@@ -187,7 +207,7 @@ func isAlive(conn net.Conn) bool {
 		return false
 	}
 
-	conn.SetReadDeadline(time.Now().Add(100 * time.Millisecond))
+	conn.SetReadDeadline(time.Now().Add(1500 * time.Millisecond))
 
 	// Maybe reading into the buffer like this is the problem.
 	reader := bufio.NewReader(conn)
