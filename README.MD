@@ -26,6 +26,8 @@ Your bot can be written in **any language** as long as it can:
 
 You can use the python template in the clients directory or get a head start on data encoding and decoding by using the api code directly with a golang bot.
 
+To run the server, simply run `go run .`
+
 ---
 
 ## 📦 Envelope Structure
