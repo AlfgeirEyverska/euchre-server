@@ -112,7 +112,7 @@ func getIntInput() int {
 	}
 }
 
-func handleRFR(rfr api.RequestForResponse, message api.ClientEnvelope, conn net.Conn) error {
+func handleRFR(rfr api.RequestForResponse, message api.Envelope, conn net.Conn) error {
 	fmt.Printf("\n%s\n\n", rfr.Info)
 	fmt.Printf("%s\n\n", message.Message)
 	fmt.Printf("%s\n\n", validResponsesString(rfr.ValidRes))
@@ -127,7 +127,7 @@ func handleRFR(rfr api.RequestForResponse, message api.ClientEnvelope, conn net.
 
 func processMessage(buf []byte, conn net.Conn) {
 
-	var message api.ClientEnvelope
+	var message api.Envelope
 	if err := json.Unmarshal(buf, &message); err != nil {
 		log.Println("Original Unmarshal Failure: ", string(buf))
 		log.Println(err)
@@ -145,7 +145,7 @@ func processMessage(buf []byte, conn net.Conn) {
 
 	case "pickUpOrPass":
 
-		rfr, err := api.HandleRequestForResponse(message.Data)
+		rfr, err := api.RequestForResponseFromJson(message.Data)
 		if err != nil {
 			log.Println("Received error: ", err)
 		}
@@ -156,7 +156,7 @@ func processMessage(buf []byte, conn net.Conn) {
 
 	case "orderOrPass":
 
-		rfr, err := api.HandleRequestForResponse(message.Data)
+		rfr, err := api.RequestForResponseFromJson(message.Data)
 		if err != nil {
 			log.Println("Received error: ", err)
 		}
@@ -171,7 +171,7 @@ func processMessage(buf []byte, conn net.Conn) {
 
 	case "dealerDiscard":
 
-		rfr, err := api.HandleRequestForResponse(message.Data)
+		rfr, err := api.RequestForResponseFromJson(message.Data)
 		if err != nil {
 			log.Println("Received error: ", err)
 		}
@@ -182,7 +182,7 @@ func processMessage(buf []byte, conn net.Conn) {
 
 	case "playCard":
 
-		rfr, err := api.HandleRequestForResponse(message.Data)
+		rfr, err := api.RequestForResponseFromJson(message.Data)
 		if err != nil {
 			log.Println("Received error: ", err)
 		}
@@ -193,7 +193,7 @@ func processMessage(buf []byte, conn net.Conn) {
 
 	case "goItAlone":
 
-		rfr, err := api.HandleRequestForResponse(message.Data)
+		rfr, err := api.RequestForResponseFromJson(message.Data)
 		if err != nil {
 			log.Println("Received error: ", err)
 		}
@@ -204,7 +204,7 @@ func processMessage(buf []byte, conn net.Conn) {
 
 	case "playerID":
 
-		myID, err := api.HandlePlayerID(message.Data)
+		myID, err := api.PlayerIDFromJson(message.Data)
 		if err != nil {
 			log.Println("Received error: ", err)
 		}
@@ -212,7 +212,7 @@ func processMessage(buf []byte, conn net.Conn) {
 
 	case "dealerUpdate":
 
-		du, err := api.HandleDealerUpdate(message.Data)
+		du, err := api.DealerUpdateFromJson(message.Data)
 		if err != nil {
 			log.Println("Received error: ", err)
 		}
@@ -220,7 +220,7 @@ func processMessage(buf []byte, conn net.Conn) {
 
 	case "suitOrdered":
 
-		so, err := api.HandleSuitOrdered(message.Data)
+		so, err := api.SuitOrderedFromJson(message.Data)
 		if err != nil {
 			log.Println("Received error: ", err)
 		}
@@ -232,7 +232,7 @@ func processMessage(buf []byte, conn net.Conn) {
 
 	case "plays":
 
-		plays, err := api.HandlePlays(message.Data)
+		plays, err := api.PlayJSONFromJson(message.Data)
 		if err != nil {
 			log.Println("Received error: ", err)
 		}
@@ -245,7 +245,7 @@ func processMessage(buf []byte, conn net.Conn) {
 
 	case "trickScore":
 
-		tscore, err := api.HandleTrickScore(message.Data)
+		tscore, err := api.TrickScoreUpdateFromJson(message.Data)
 		if err != nil {
 			log.Println("Received error: ", err)
 		}
@@ -255,7 +255,7 @@ func processMessage(buf []byte, conn net.Conn) {
 
 	case "updateScore":
 
-		score, err := api.HandleUpdateScore(message.Data)
+		score, err := api.ScoreUpdateFromJson(message.Data)
 		if err != nil {
 			log.Println("Received error: ", err)
 		}
@@ -265,7 +265,7 @@ func processMessage(buf []byte, conn net.Conn) {
 
 	case "error":
 
-		errMessage, err := api.HandleError(message.Data)
+		errMessage, err := api.ErrorFromJson(message.Data)
 		if err != nil {
 			log.Println("Received error: ", err)
 		}
@@ -273,7 +273,7 @@ func processMessage(buf []byte, conn net.Conn) {
 
 	case "gameOver":
 
-		winner, err := api.HandleGameOver(message.Data)
+		winner, err := api.WinnerUpdateFromJson(message.Data)
 		if err != nil {
 			log.Println(err)
 			return

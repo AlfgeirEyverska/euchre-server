@@ -35,7 +35,7 @@ func HandleConnectionCheck(writer net.Conn) error {
 
 	msgBytes := api.EncodeResponse("connectionCheck", message)
 
-	log.Println("Connection Check Message: ", msgBytes)
+	log.Printf("Connection Check Message: %s\n", msgBytes)
 	_, err := writer.Write(msgBytes)
 	if err != nil {
 		return err

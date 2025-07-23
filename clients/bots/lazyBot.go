@@ -38,7 +38,8 @@ func LazyBot(doneChan chan int, ctx context.Context) {
 				return
 			}
 
-			var message api.ClientEnvelope
+			var message api.Envelope
+			// var message api.ClientEnvelope
 			err = json.Unmarshal(buf, &message)
 			if err != nil {
 				log.Println("Original Unmarshal Failure: ", string(buf))
@@ -52,14 +53,14 @@ func LazyBot(doneChan chan int, ctx context.Context) {
 			case "connectionCheck":
 				clients.HandleConnectionCheck(conn)
 			case "pickUpOrPass":
-				api.HandleRequestForResponse(message.Data)
+				api.RequestForResponseFromJson(message.Data)
 				_, err = conn.Write(api.EncodeResponse(message.Type, 1))
 				if err != nil {
 					log.Println(err)
 					return
 				}
 			case "orderOrPass":
-				api.HandleRequestForResponse(message.Data)
+				api.RequestForResponseFromJson(message.Data)
 				// api.HandleOrderOrPass(message.Data)
 				_, err = conn.Write(api.EncodeResponse(message.Type, 2))
 				if err != nil {
@@ -67,7 +68,7 @@ func LazyBot(doneChan chan int, ctx context.Context) {
 					return
 				}
 			case "dealerDiscard":
-				api.HandleRequestForResponse(message.Data)
+				api.RequestForResponseFromJson(message.Data)
 				// api.HandleDealerDiscard(message.Data)
 				_, err = conn.Write(api.EncodeResponse(message.Type, 1))
 				if err != nil {
@@ -75,7 +76,7 @@ func LazyBot(doneChan chan int, ctx context.Context) {
 					return
 				}
 			case "playCard":
-				api.HandleRequestForResponse(message.Data)
+				api.RequestForResponseFromJson(message.Data)
 				// api.HandlePlayCard(message.Data)
 				_, err = conn.Write(api.EncodeResponse(message.Type, 1))
 				if err != nil {
@@ -83,7 +84,7 @@ func LazyBot(doneChan chan int, ctx context.Context) {
 					return
 				}
 			case "goItAlone":
-				api.HandleRequestForResponse(message.Data)
+				api.RequestForResponseFromJson(message.Data)
 				// api.HandleGoItAlone(message.Data)
 				_, err = conn.Write(api.EncodeResponse(message.Type, 2))
 				if err != nil {
@@ -91,23 +92,23 @@ func LazyBot(doneChan chan int, ctx context.Context) {
 					return
 				}
 			case "playerID":
-				api.HandlePlayerID(message.Data)
+				api.PlayerIDFromJson(message.Data)
 			case "dealerUpdate":
-				api.HandleDealerUpdate(message.Data)
+				api.DealerUpdateFromJson(message.Data)
 			case "suitOrdered":
-				api.HandleSuitOrdered(message.Data)
+				api.SuitOrderedFromJson(message.Data)
 			case "plays":
-				api.HandlePlays(message.Data)
+				api.PlayJSONFromJson(message.Data)
 			case "trickWinner":
 				log.Println(message.Message)
 			case "trickScore":
-				api.HandleTrickScore(message.Data)
+				api.TrickScoreUpdateFromJson(message.Data)
 			case "updateScore":
-				api.HandleUpdateScore(message.Data)
+				api.ScoreUpdateFromJson(message.Data)
 			case "error":
-				api.HandleError(message.Data)
+				api.ErrorFromJson(message.Data)
 			case "gameOver":
-				res, err := api.HandleGameOver(message.Data)
+				res, err := api.WinnerUpdateFromJson(message.Data)
 				if err != nil {
 					log.Println(err)
 					continue
